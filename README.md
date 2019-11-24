@@ -28,7 +28,7 @@ Ou plus simplement, si votre interpréteur est anaconda, taper directement dans 
 
 Si cela ne marche pas, c'est probablement que la version utilisée de Python est antérieure à 3.4 ou que plusieurs versions de Python sont installées. Dans tous les cas, https://docs.python.org/3/installing/index.html est une ressource utile.
 
-L'exécition du script peut provoquer quelques bugs plus exotiques, certains sont décrits dans la dernière section du README.
+L'exécution du script peut provoquer quelques bugs plus exotiques, certains sont décrits dans la dernière section du README.
 
 
 # Utilisation pour la première fois
@@ -69,7 +69,7 @@ X:\Chemin\Du\Dossier> python update_prices.py 06.11_facture.pdf carrefour appro
   
 Chaque nouveau nombre qui s'affiche dans cet invite de commande, correspond à un code ou une quantité d'un ancien aliment (pas besoin de créer une nouvelle fiche d'aliment, donc).
 
-Il n'y a pas besoin de les copier, c'est fait automatiquement par le script : il ne reste plus qu'à le coller dans la bonne case. Il faut simplement le faire avant que le prochain nombre s'affiche, sinon ce nouveau nombre prend sa place dans le presse-papier.
+Il n'y a pas besoin de le copier, c'est fait automatiquement par le script : il ne reste plus qu'à le coller dans la bonne case. Il faut simplement le faire avant que le prochain nombre s'affiche, sinon ce nouveau nombre prend sa place dans le presse-papier.
 
 Que faire si je rate un ou plusieurs nombres ? Pas de panique, le script peut être mis en pause en tapant n'importe quelle lettre de l'alphabet dans l'invite de commande. Ne pas taper Ctrl+C sinon le script sera arrêté définitivement et il faudra recommencer du début. Cela doit vous laisser autant de temps que nécessaire pour récupérer le nombre manqué, le copier coller manuellement vers Chocapix. Quand le retard est rattrapé, appuyer sur Entrer dans l'invite de commande et le script continue. Cela peut ressembler à :
 
