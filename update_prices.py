@@ -8,10 +8,14 @@ import sys
 import msvcrt
 import pyperclip
 
-appro = False #si False, l'assistance à l'appro ne se déclenche pas
+after_series_number = 1 #temps donné pour coller le numéro de série (sec)
+after_quantity = 4 #et pour coller la quantité puis changer d'aliment
 
-magasins = ["carrefour", "picard", "efiester"]
-pasdappro = ["picard"] #remettre de force appro à False
+appro = False # valeur par défaut, ne pas modifier ici
+archive = False # valeur par défaut, ne pas modifier ici
+
+brands = ["carrefour", "picard", "efiester"]
+pasdappro = ["picard"]
 
 ## Parsing
 
@@ -75,23 +79,25 @@ def let_user_pause(timeout):
 def show_and_copy(article):
     pyperclip.copy(str(article.sernumber))
     print(str(article.sernumber), end = '', flush=True)
-    let_user_pause(1)
+    let_user_pause(after_series_number)
     pyperclip.copy(str(article.qty))
     print(f" {article.qty}")
-    let_user_pause(3 if article.qty==1 else 4)
+    let_user_pause(after_quantity)
 
 ## Lecture de la facture parsée, mise à jour des prix, compte-rendu
 
-def update_prices(filename, brand, appro=True):
+def update_prices(filename, brand):
     prices = {}
     newarticlesindex = {}
     newarticles = []
     newprices = []
-    with open(f"prix_{brand}.txt", 'r') as former:
-        lines = [line.split(' ') for line in former.readlines()]
-        for [key, value] in lines:
-            prices[int(key)] = float(value)
-
+    try:
+        with open(f"prix_{brand}.txt", 'r') as former:
+            lines = [line.split(' ') for line in former.readlines()]
+            for [key, value] in lines:
+                prices[int(key)] = float(value)
+    except:
+        pass
     for article in get_from_file(filename, brand):
         if article.sernumber in prices:
             if article.sernumber not in newarticlesindex:
@@ -109,46 +115,67 @@ def update_prices(filename, brand, appro=True):
             newarticles.append(article)
         prices[article.sernumber] = article.price
 
-    with open(f"compte-rendu_{filename[:-4]}.txt", 'w') as cr:
-        if newprices:
-            print("\nEvolutions de prix :")
-        for (former_price, article) in newprices:
-            print(f"{article.name} : évolution de {former_price} à {article.price}")
-            cr.write(f"{article.name} : évolution de {former_price} à {article.price}\n")
-    if newarticles:
-        print("\nNouveaux articles :")
-    for article in newarticles:
-        print(article)
+    if not archive:
+        with open(f"compte-rendu_{filename[:-4]}.txt", 'w') as cr:
+            if newprices:
+                print("\nEvolutions de prix :")
+            for (former_price, article) in newprices:
+                print(f"{article.name} : évolution de {former_price} à {article.price}")
+                cr.write(f"{article.name} : évolution de {former_price} à {article.price}\n")
+        if appro:
+            if newarticles:
+                print("\nNouveaux articles :")
+            for article in newarticles:
+                print(article)
 
     with open(f"prix_{brand}.txt", 'w') as newfile:
         for key, value in prices.items():
             newfile.write(f"{key} {value}\n")
 
+    print("\nBase de données des prix mise à jour." + ("" if archive else " Ecriture du compte-rendu des évolutions de prix terminée."))
+
 ## Recueil des arguments donnée dans le shell, gestion des erreurs
 
 if __name__ == "__main__":
     def main():
-        global start_time, appro
+        global appro, archive, after_series_number, after_quantity
         entrypoint = update_prices
         while len(sys.argv) > 1:
             opt = sys.argv[1]
             if opt[-4:] == ".pdf":
                 filename = opt
-            elif opt.lower() in magasins:
+            elif opt.lower() in brands:
                 brand = opt.lower()
-                if brand in pasdappro:
-                    appro = False
             elif opt == "appro":
                 appro = True
+            elif opt == "archive":
+                archive = True
+            elif opt in ["pause_set", "set_pause"]:
+                if len(sys.argv) <= 3:
+                    print(f"")
+                    sys.exit(1)
+                try:
+                    after_series_number = eval(sys.argv[2].replace(',', '.'))
+                    sys.argv.pop(2)
+                    after_quantity = eval(sys.argv[2].replace(',', '.'))
+                    sys.argv.pop(2)
+                except:
+                    print(f"La commande {opt} demande 2 nombres après. Ces 2 nombres doivent être entiers ou à virgule.")
+                    sys.exit(1)
             else:
                 print(f"Option inconnue \"{sys.argv[1]}\".")
+                sys.exit(1)
+            if appro and archive:
+                print("Les mots-clé appro et archive ne peuvent être utilisés en même temps")
                 sys.exit(1)
             sys.argv.pop(1)
 
         start_time = time()
         try:
-            entrypoint(filename, brand, appro)
-            print("\nBase de données des prix mise à jour. Ecriture du compte-rendu des évolutions de prix terminée.")
+            if brand in pasdappro:
+                appro = False
+                print("Le mode appro n'est pas disponible pour cette marque. Les codes de chaque aliments écrits dans la facture ne correspondent pas au code-barre que Chocapix connait. Ce script n'est donc capable que de surveiller l'évolution des prix pour cette marque.")
+            entrypoint(filename, brand)
         except KeyboardInterrupt:
             print("\nScript interrompu définitivement")
         except UnboundLocalError:
