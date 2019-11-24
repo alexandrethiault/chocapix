@@ -5,8 +5,15 @@ from tika import parser
 from time import time, sleep
 
 import sys
-import msvcrt
 import pyperclip
+import os
+
+if os.name == 'nt':
+    import msvcrt
+else:
+    import termios
+    import atexit
+    from select import select
 
 after_series_number = 1 #temps donné pour coller le numéro de série (sec)
 after_quantity = 4 #et pour coller la quantité puis changer d'aliment
@@ -68,10 +75,32 @@ def get_from_file(filename, brand):
 
 ## Interface pour l'assistance à l'appro, utilisé seulement si appro = True
 
+class KBHit:
+    def __init__(self):
+        if os.name == 'nt':
+            pass
+        else:
+            self.fd = sys.stdin.fileno()
+            self.new_term = termios.tcgetattr(self.fd)
+            self.old_term = termios.tcgetattr(self.fd)
+            self.new_term[3] = (self.new_term[3] & ~termios.ICANON & ~termios.ECHO)
+            termios.tcsetattr(self.fd, termios.TCSAFLUSH, self.new_term)
+            atexit.register(self.set_normal_term)
+
+    def set_normal_term(self):
+        termios.tcsetattr(self.fd, termios.TCSAFLUSH, self.old_term)
+
+    def kbhit(self):
+        if os.name == 'nt':
+            return msvcrt.kbhit()
+        else:
+            dr,dw,de = select([sys.stdin], [], [], 0)
+            return dr != []
+
 def let_user_pause(timeout):
     t0 = time()
     while time() - t0 < timeout:
-        if msvcrt.kbhit(): # à tes souhaits
+        if kb.kbhit():
             print("\nScript mis en pause. Appuyer sur Entrer pour le poursuivre.")
             sleep(3)
             input()
@@ -134,11 +163,11 @@ def update_prices(filename, brand):
 
     print("\nBase de données des prix mise à jour." + ("" if archive else " Ecriture du compte-rendu des évolutions de prix terminée."))
 
-## Recueil des arguments donnée dans le shell, gestion des erreurs
+## Recueil des arguments donnés dans le shell, gestion des erreurs
 
 if __name__ == "__main__":
     def main():
-        global appro, archive, after_series_number, after_quantity
+        global appro, archive, after_series_number, after_quantity, kb
         entrypoint = update_prices
         while len(sys.argv) > 1:
             opt = sys.argv[1]
@@ -151,13 +180,10 @@ if __name__ == "__main__":
             elif opt == "archive":
                 archive = True
             elif opt in ["pause_set", "set_pause"]:
-                if len(sys.argv) <= 3:
-                    print(f"")
-                    sys.exit(1)
                 try:
-                    after_series_number = eval(sys.argv[2].replace(',', '.'))
+                    after_series_number = float(sys.argv[2].replace(',', '.'))
                     sys.argv.pop(2)
-                    after_quantity = eval(sys.argv[2].replace(',', '.'))
+                    after_quantity = float(sys.argv[2].replace(',', '.'))
                     sys.argv.pop(2)
                 except:
                     print(f"La commande {opt} demande 2 nombres après. Ces 2 nombres doivent être entiers ou à virgule.")
@@ -174,7 +200,8 @@ if __name__ == "__main__":
         try:
             if brand in pasdappro:
                 appro = False
-                print("Le mode appro n'est pas disponible pour cette marque. Les codes de chaque aliments écrits dans la facture ne correspondent pas au code-barre que Chocapix connait. Ce script n'est donc capable que de surveiller l'évolution des prix pour cette marque.")
+                print(f"Le mode appro n'est pas disponible pour {brand}. Les codes de chaque aliments écrits dans la facture ne correspondent pas au code-barre que Chocapix connait. Ce script n'est donc capable que de surveiller l'évolution des prix de {brand}.")
+            kb = KBHit()
             entrypoint(filename, brand)
         except KeyboardInterrupt:
             print("\nScript interrompu définitivement")
