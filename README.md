@@ -18,11 +18,11 @@ Il faudra éventuellement installer les modules Python suivants, si ils provoque
   time, tika, sys, msvcrt, pyperclip
   
 Pour installer un module Python :
-  Il faut taper dans un invite de commande
-  pip install nom_de_la_bibliotheque
-  Ou plus simplement, si votre interpréteur est anaconda, taper directement dans un shell Python
-  >>> conda install nom_de_la_bibliotheque
-  Si cela ne marche pas, c'est probablement que la version utilisée de Python est antérieure à 3.4 ou que plusieurs versions de Python sont installées. Dans tous les cas, https://docs.python.org/3/installing/index.html est une ressource utile.
+Il faut taper dans un invite de commande
+pip install nom_de_la_bibliotheque
+Ou plus simplement, si votre interpréteur est anaconda, taper directement dans un shell Python
+>>> conda install nom_de_la_bibliotheque
+Si cela ne marche pas, c'est probablement que la version utilisée de Python est antérieure à 3.4 ou que plusieurs versions de Python sont installées. Dans tous les cas, https://docs.python.org/3/installing/index.html est une ressource utile.
 
 Télécharger le fichier update_prices.py et le ranger dans un dossier qui contiendra aussi les factures.
 
@@ -31,8 +31,8 @@ Télécharger le fichier update_prices.py et le ranger dans un dossier qui conti
 Ouvrir un invite de commande dans le dossier qui contient le fichier Python et toutes les anciennes factures.
 
 Taper successivement dans l'invite de commande, pour toutes les anciennes factures, dans un ordre chronologique :
-  python update_prices.py facture.pdf marque archive
-  où facture.pdf est à remplacer par le nom d'un fichier contenant une factures, et marque est à remplacer par la marque (Carrefour, Picard...) du supermarché ayant envoyé la facture. Il faut inclure le .pdf dans le nom de la facture.
+python update_prices.py facture.pdf marque archive
+où facture.pdf est à remplacer par le nom d'un fichier contenant une factures, et marque est à remplacer par la marque (Carrefour, Picard...) du supermarché ayant envoyé la facture. Il faut inclure le .pdf dans le nom de la facture.
   
 Si un message contenant "[MainThread  ] [WARNI]  Failed to see startup log message; retrying..." s'affiche, l'ignorer, ça devrait durer moins de 5 secondes.
 
@@ -44,38 +44,38 @@ Lire tout le paragraphe avant de commencer à effectuer les opérations décrite
 
 Ouvrir un invite de commande dans le dossier qui contient le fichier Python et la facture. Ouvrir Chocapix. Diviser l'écran en mosaïque de façon à voir à la fois l'invite de commande (pas besoin de plus d'un tiers de l'écran) et Chocapix. Etre prêt à logguer l'appro en s'assurant que la case pour rentrer le code du premier aliment et la case pour la quantité sont à portée de souris.
 Pour lancer le script sur une facture de la marque "marque" qui s'appelle "facture.pdf", taper :
-  python update_prices.py facture.pdf marque appro
+python update_prices.py facture.pdf marque appro
 Si un message contenant "[MainThread  ] [WARNI]  Failed to see startup log message; retrying..." s'affiche, l'ignorer.
 
 Quelques instants après le lancement de la commande, des chiffres vont commencer à s'afficher dans l'invite de commande. Au bout de quelques secondes, cela peut ressembler à :
 
-  X:\Chemin\Du\Dossier> python update_prices.py 06.11_facture.pdf carrefour appro
-  3245390089854 2
-  3270190007050 2
-  3276650121533 
+X:\Chemin\Du\Dossier> python update_prices.py 06.11_facture.pdf carrefour appro
+3245390089854 2
+3270190007050 2
+3276650121533 
   
 Chaque nouveau nombre qui s'affiche dans cet invite de commande, correspond à un code ou une quantité d'un ancien aliment (pas besoin de créer une nouvelle fiche d'aliment, donc).
 Il n'y a pas besoin de les copier, c'est fait automatiquement par le script : il ne reste plus qu'à le coller dans la bonne case. Il faut simplement le faire avant que le prochain nombre s'affiche, sinon ce nouveau nombre prend sa place dans le presse-papier.
 
 Que faire si je rate un ou plusieurs nombres ? Pas de panique, le script peut être mis en pause en tapant n'importe quelle lettre de l'alphabet dans l'invite de commande. Ne pas taper Ctrl+C sinon le script sera arrêté définitivement et il faudra recommencer du début. Cela doit vous laisser autant de temps que nécessaire pour récupérer le nombre manqué, le copier coller manuellement vers Chocapix. Quand le retard est rattrapé, appuyer sur Entrer dans l'invite de commande et le script continue. Cela peut ressembler à :
 
-  D:\Alexandre\Chocapix>python update_prices.py 06.11_facture.pdf carrefour appro
-  2019-11-24 14:45:23,856 [MainThread  ] [WARNI]  Failed to see startup log message; retrying...
-  3245390089854 2
-  3270190007050 2
-  3276650121533 1
-  5601019001030                 // <- Les nombres affichés ne sont pas effacés au fur et à mesure.
-  Script mis en pause. Appuyer sur Entrer pour le poursuivre. // Cela permet de copier coller à la main ce qu'on a manqué
-  g                             // <- la lettre tapée pour mettre en pause le script peut s'afficher. Cela n'a aucune importance.
-  1                             // <- Aucun nombre ne sera affiché deux fois, ce 1 correspond donc au code barre 5601019001030
-  3166291458405 1
-  ...
+D:\Alexandre\Chocapix>python update_prices.py 06.11_facture.pdf carrefour appro
+2019-11-24 14:45:23,856 [MainThread  ] [WARNI]  Failed to see startup log message; retrying...
+3245390089854 2
+3270190007050 2
+3276650121533 1
+5601019001030                 // <- Les nombres affichés ne sont pas effacés au fur et à mesure.
+Script mis en pause. Appuyer sur Entrer pour le poursuivre. // Cela permet de copier coller à la main ce qu'on a manqué
+g                             // <- la lettre tapée pour mettre en pause le script peut s'afficher. Cela n'a aucune importance.
+1                             // <- Aucun nombre ne sera affiché deux fois, ce 1 correspond donc au code barre 5601019001030
+3166291458405 1
+...
  
 Par défaut le temps donné pour coller un nombre avant que le prochain prenne sa place est :
-  1 seconde après un numéro de série (puisqu'il suffit de coller et déplacer la souris vers la quantité)
-  4 secondes après une quantité (parce que cette fois il faut coller puis ouvrir une nouvelle fiche de loggage)
+1 seconde après un numéro de série (puisqu'il suffit de coller et déplacer la souris vers la quantité)
+4 secondes après une quantité (parce que cette fois il faut coller puis ouvrir une nouvelle fiche de loggage)
 Pour changer ces temps de manière ponctuelle pour une seule appro, on pourra à la place de la commande vue plus haut écrire :
-  X:\Chemin\Du\Dossier> python update_prices.py 06.11_facture.pdf carrefour appro pause_set x y
+X:\Chemin\Du\Dossier> python update_prices.py 06.11_facture.pdf carrefour appro pause_set x y
 Où x et y (entiers ou à virgule) remplaceront respectivement le 1 et le 4. Choisissez les temps idéaux pour terminer l'appro le plus rapidement possible sans avoir à pauser régulièrement le script. 
 Ces paramètres peuvent aussi être changés définitivement en modifiant le code du fichier Python : les deux valeurs y sont définies dans les premières lignes après les imports de modules.
 
