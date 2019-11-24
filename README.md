@@ -12,30 +12,34 @@ Toutefois, ce script n'a pas pour vocation :
 
 # Prérequis
 
-Pour logguer une appro avec ce script il faut au préalable avoir la facture originale (pas un scan) au format .pdf et avoir sur l'ordinateur un interpréteur Python 3.4 ou plus récent. Il sera aussi utile d'avoir le plus de factures possible venant des anciennes appros. Télécharger le fichier update_prices.py et le ranger dans un dossier qui contiendra aussi les factures.
+Le script a été testé avec succès sur Windows 10, MacOS, Ubuntu, et un WSL Ubuntu. Rien n'est garanti pour d'autres systèmes d'exploitation.
 
-Il faudra éventuellement installer les modules Python suivants, si ils provoquent des erreurs d'imports : time, tika, sys, msvcrt, pyperclip.
+Pour logguer une appro avec ce script il faut au préalable avoir la facture originale (pas un scan) au format .pdf et avoir un interpréteur Python 3.6 ou plus récent. Il sera aussi utile d'avoir le plus de factures possible venant des anciennes appros. Télécharger le fichier update_prices.py et le ranger dans un dossier qui contiendra aussi les factures.
+
+Il faudra éventuellement installer les modules Python suivants, s'ils provoquent des erreurs d'imports : time, tika, sys et pyperclip ; sur Windows seulement : msvcrt ; sur les autres OS seulement : termios, atexit et select
   
 Pour installer un module Python, il faut taper dans un invite de commande :
 
-pip install nom_de_la_bibliotheque
+pip install nom_du_module
 
 Ou plus simplement, si votre interpréteur est anaconda, taper directement dans un shell Python :
 
-\>\>\> conda install nom_de_la_bibliotheque
+\>\>\> conda install nom_du_module
 
 Si cela ne marche pas, c'est probablement que la version utilisée de Python est antérieure à 3.4 ou que plusieurs versions de Python sont installées. Dans tous les cas, https://docs.python.org/3/installing/index.html est une ressource utile.
+
+L'exécition du script peut provoquer quelques bugs plus exotiques, certains sont décrits dans la dernière section du README.
 
 
 # Utilisation pour la première fois
 
 Ouvrir un invite de commande dans le dossier qui contient le fichier Python et toutes les anciennes factures.
 
-Taper successivement dans l'invite de commande, pour toutes les anciennes factures, dans un ordre chronologique :
+Taper successivement dans l'invite de commande, pour toutes les anciennes factures (sans inclure la dernière si elle n'a pas encoré été logguée), dans un ordre chronologique :
 
 python update_prices.py facture.pdf marque archive
 
-où facture.pdf est à remplacer par le nom d'un fichier contenant une factures, et marque est à remplacer par la marque (Carrefour, Picard...) du supermarché ayant envoyé la facture. Il faut inclure le .pdf dans le nom de la facture.
+où facture.pdf est à remplacer par le nom d'un fichier contenant une facture, et marque est à remplacer par la marque (Carrefour, Picard...) du supermarché ayant envoyé la facture. Il faut inclure le .pdf dans le nom de la facture.
   
 Si un message contenant "[MainThread  ] [WARNI]  Failed to see startup log message; retrying..." s'affiche, l'ignorer, ça devrait durer moins de 5 secondes.
 
@@ -43,7 +47,7 @@ A l'issue, s'il n'y a pas d'appro à faire tout de suite, l'invite de commande p
 
 # Utilisation pour une appro
 
-Lire tout le paragraphe avant de commencer à effectuer les opérations décrites.
+Lire toute la section avant de commencer à effectuer les opérations décrites.
 
 Ouvrir un invite de commande dans le dossier qui contient le fichier Python et la facture. Ouvrir Chocapix. Diviser l'écran en mosaïque de façon à voir à la fois l'invite de commande (pas besoin de plus d'un tiers de l'écran) et Chocapix. Etre prêt à logguer l'appro en s'assurant que la case pour rentrer le code du premier aliment et la case pour la quantité sont à portée de souris.
 
@@ -107,12 +111,12 @@ Ces paramètres peuvent aussi être changés définitivement en modifiant le cod
 
 A la fin de cette première phase, le script affiche dans l'invite de commandes une liste d'articles dont le prix a changé. Ces articles ont déjà été loggués, il suffit de modifier leur prix manuellement.
 
-Enfin, le script affiche dans l'invite de commandes la liste des nouveaux articles, jamais rencontrés. Par "jamais rencontré" il faut comprendre "jamais rencontré par le script". En effet si le paragraphe "Usage pour la première fois" n'a pas été suivi ou si des factures sont manquantes, le script peut ne pas connaître un article qui a bien été loggué dans Chocapix il y a longtemps. Dans ce cas, il n'a pas été cité plus haut par le script et il va falloir le logguer à la main maintenant.
+Enfin, le script affiche dans l'invite de commandes la liste des nouveaux articles, jamais rencontrés. Par "jamais rencontré" il faut comprendre "jamais rencontré par le script". En effet si la section "Usage pour la première fois" n'a pas été suivie ou si des factures sont manquantes, le script peut ne pas connaître un article qui a bien été loggué dans Chocapix il y a longtemps. Dans ce cas, il n'a pas été cité plus haut par le script et il va falloir le logguer à la main maintenant.
 
 C'est terminé. L'invite de commande peut être fermé. A l'issue de l'appro, un compte-rendu au format .txt est créé, listant tous les changements de prix. Il n'y a aucun danger à modifier ou supprimer ce compte-rendu, sa vocation est purement informative. Il peut par exemple être recopié dans l'onglet des nouvelles par le respo news afin d'informer les membres de sa section sur les bonnes ou mauvaises surprises qui peuvent les attendre en logguant leurs aliments préférés.
 
 # Détails sur les mots-clé "appro" et "archive"
-Le mot-clé archive est, comme vu plus haut, à écrire pour faire connaître au script les anciennes factures, dont l'appro a déjà été faite. Quand "archive" est donné en paramètre au script, rien ne sera affiché dans l'invite de commande, le script construit et maintient sa base de données tout seul et il ne produit pas de compte-rendu des changements des prix. 
+Le mot-clé archive est, comme expliqué plus haut, à écrire pour faire connaître au script les anciennes factures, dont l'appro a déjà été faite. Quand "archive" est donné en paramètre au script, rien ne sera affiché dans l'invite de commande, le script construit et maintient sa base de données tout seul et il ne produit pas de compte-rendu des changements des prix. 
 
 Au contraire, le mot-clé appro est fait pour être employé en situation réelle d'appro. Tous les aliments sont listés soit dans la partie où les codes barres et quantités sont copiées automatiquement, soit dans la liste finale des nouveaux aliments. Et tous les changements de prix sont signalés. Ce mode crée un compte-rendu des modifications des prix qui peut ensuite être recopié dans le section news de Chocapix.
 
@@ -120,11 +124,15 @@ Toutefois il est possible de produire un compte-rendu en dehors du mode appro. I
 
 Ainsi, au lieu de suivre le paragraphe "Utilisation pour la première fois" à la lettre, on pourra retirer le mot-clé "archive" des quelques dernières factures, sans pour autant y mettre le mot-clé appro, et le script produira alors tous les compte-rendus des appros récentes.
 
-En revanche il n'est pas possible d'utiliser les mots clés appro et archive en même temps.
+A l'inverse il n'est pas possible d'utiliser les mots clés appro et archive en même temps.
 
 # Mauvaise utilisation du script
 Il faudra bien prendre garde de :
-- ne pas modifier le code du script, évidemment, sauf pour modifier définitivement une des variables définissant le temps de pause, ou si vous savez ce que vous faites
+- ne pas modifier le code du script, évidemment, sauf pour modifier définitivement une des variables définissant le temps de pause, ou si vous savez ce que vous faites.
 - ne pas modifier à la main le contenu des fichiers prix_marque.txt
-- ne pas utiliser le script en mode appro sur un magasin qui ne donne pas les codes-barres de ses aliments dans la facture. Par exemple Picard utilise dans ses factures des codes d'article qui ne correspondent pas au code-barre. Si Chocapix a été renseigné avec le code-barre, le script ne peut pas aider. C'est réparable uniquement en modifiant à la main tous les codes-barres Picard retenus par Chocapix pour les remplacer par les codes de la facture. En attendant, le script ne sera bon qu'à faire ses compte-rendus d'evolution de prix. Il est donc possible de lancer le script sur le mode appro mais le script vous le fera savoir.
-- ne pas lancer le script sur une ancienne facture sans savoir ce qu'on fait. Cela modifiera le fichier prix_marque.txt et renseignera des prix obsolètes devant certains aliments, prix qui seront resignalés inutilement lors de la prochaine appro. Aussi, l'éventuel compte-rendu créé n'aura aucun sens puisqu'il montrera les "évolutions" de prix de cette remontée dans le temps. Pour faire rentrer les choses dans l'ordre, il faut lancer le script avec le mot-clé archive sur toutes les factures de la même marque entre celle-là et la plus récente.
+- ne pas utiliser le script en mode appro sur un magasin qui ne donne pas les codes-barres de ses aliments dans la facture. Par exemple Picard utilise dans ses factures des codes d'article qui ne correspondent pas au code-barre. Si Chocapix a été renseigné avec le code-barre, le script ne peut pas aider. C'est réparable uniquement en modifiant à la main tous les codes-barres Picard retenus par Chocapix pour les remplacer par les codes de la facture. En attendant, le script ne sera bon qu'à faire ses compte-rendus d'évolution de prix. Il est toujours possible de lancer le script avec le mot-clé "appro" mais le script l'ignorera.
+- ne pas lancer le script sur une ancienne facture sans savoir ce qu'on fait. Cela modifiera le fichier prix_marque.txt et renseignera des prix obsolètes devant certains aliments, prix qui seront resignalés inutilement lors de la prochaine appro. Aussi, l'éventuel compte-rendu créé n'aura aucun sens puisqu'il montrera les "évolutions" de prix de cette remontée dans le temps. Pour faire rentrer les choses dans l'ordre, il faut lancer le script avec le mot-clé "archive" sur toutes les factures de la même marque entre celle-là et la plus récente dans l'ordre chronologique.
+
+# Quelques messages d'erreur exotiques
+- RuntimeError: Unable to start Tika server. (après un traceback et un message d'erreur contenant Unable to run java; is it installed?) Ce problème rencontré avec un WSL Ubuntu a été résolu en installant Java. Pour plus de détails, voir https://stackoverflow.com/questions/36478741/installing-oracle-jdk-on-windows-subsystem-for-linux
+- Not Implemented Error: Pyperclip could not find a copy/paste mechanism for your system. Ce problème rencontré sous Ubuntu a été résolu en installant un mécanisme de copier/coller. Pour plus de détails, voir https://pyperclip.readthedocs.io/en/latest/introduction.html#not-implemented-error
