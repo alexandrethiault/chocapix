@@ -15,14 +15,16 @@ else:
     import atexit
     from select import select
 
-after_series_number = 1 #temps donné pour coller le numéro de série (sec)
+after_series_number = 1.5 #temps donné pour coller le numéro de série (sec)
 after_quantity = 4 #et pour coller la quantité puis changer d'aliment
 
 appro = False # valeur par défaut, ne pas modifier ici
 archive = False # valeur par défaut, ne pas modifier ici
 
-brands = ["carrefour", "picard", "efiester"]
+brands = ["carrefour", "picard"]
 pasdappro = ["picard"]
+keyword = {"carrefour": "OOSHOP", "picard": "SIRET : 78493968805071"}
+finddate = {"picard": (lambda s: s[s.find("DATE : ")+7:s.find("DATE : ")+17]), "carrefour" : (lambda s: s[s.find("Date de commande : ")+19:s.find("Date de commande : ")+29])}
 
 ## Parsing
 
@@ -36,8 +38,8 @@ class Article:
             self.name = " ".join(string[1:-3])
             self.qty = int(string[-3])
             stm2 = string[-2][string[-2].index('.')+3:]
-            if stm2[:4] == "0.00":
-                stm2 = stm2[4:]
+            if stm2.count('.') == 2:
+                stm2 = stm2[stm2.index('.')+3:]
             self.price = float(stm2[:stm2.index('.')+3])
             self.TVA = float(string[-1])
         elif brand == "picard":
@@ -56,14 +58,30 @@ class Article:
             self.price = float(string[-5].replace(',', '.'))
             self.TVA = float(string[-1][:-1].replace(',', '.'))
         else:
-            raise NotImplementedError
+            raise NotImplementedError(brand)
 
     def __repr__(self):
         return f"{self.sernumber} {self.name} - Qté : {self.qty} - Prix : {self.price}"
 
-def get_from_file(filename, brand):
+def stddate(jjmmaaaa):
+    jj = jjmmaaaa[:2]
+    mm = jjmmaaaa[3:5]
+    aaaa = jjmmaaaa[6:]
+    return f"{aaaa}{mm}{jj}"
+
+def get_from_file(filename):
     raw = parser.from_file(filename)
     string = raw['content']
+    for br in brands:
+        if keyword[br] in string:
+            brand = br
+            break
+    else:
+        raise NotImplementedError("")
+    try:
+        date = stddate(finddate[brand](string))
+    except:
+        raise NotImplementedError("")
     articles = []
     for line in string.splitlines():
         line = line.split(' ')
@@ -71,7 +89,7 @@ def get_from_file(filename, brand):
             articles.append(Article(line, brand))
         except (ValueError, IndexError) as e:
             pass
-    return articles
+    return date, brand, articles
 
 ## Interface pour l'assistance à l'appro, utilisé seulement si appro = True
 
@@ -104,10 +122,18 @@ def let_user_pause(timeout):
             print("\nScript mis en pause. Appuyer sur Entrer pour le poursuivre.")
             sleep(3)
             input()
+            preparation()
+
+def preparation():
+    print("Début dans ", end="", flush=True)
+    for i in range(6):
+        print(3-i//2 if i%2 == 0 else ".", end=' ', flush=True)
+        sleep(0.5)
+    print()
 
 def show_and_copy(article):
     pyperclip.copy(str(article.sernumber))
-    print(str(article.sernumber), end = '', flush=True)
+    print(str(article.sernumber), end='', flush=True)
     let_user_pause(after_series_number)
     pyperclip.copy(str(article.qty))
     print(f" {article.qty}")
@@ -115,7 +141,8 @@ def show_and_copy(article):
 
 ## Lecture de la facture parsée, mise à jour des prix, compte-rendu
 
-def update_prices(filename, brand):
+def update_prices(parsedfile):
+    date, brand, articles = parsedfile
     prices = {}
     newarticlesindex = {}
     newarticles = []
@@ -127,7 +154,10 @@ def update_prices(filename, brand):
                 prices[int(key)] = float(value)
     except:
         pass
-    for article in get_from_file(filename, brand):
+    if appro:
+        preparation()
+
+    for article in articles:
         if article.sernumber in prices:
             if article.sernumber not in newarticlesindex:
                 former_price = prices[article.sernumber]
@@ -145,7 +175,7 @@ def update_prices(filename, brand):
         prices[article.sernumber] = article.price
 
     if not archive:
-        with open(f"compte-rendu_{filename[:-4]}.txt", 'w') as cr:
+        with open(f"compte-rendu_{brand}_{date}.txt", 'w') as cr:
             if newprices:
                 print("\nEvolutions de prix :")
             for (former_price, article) in newprices:
@@ -158,10 +188,12 @@ def update_prices(filename, brand):
                 print(article)
 
     with open(f"prix_{brand}.txt", 'w') as newfile:
+        lines = []
         for key, value in prices.items():
-            newfile.write(f"{key} {value}\n")
-
-    print("\nBase de données des prix mise à jour." + ("" if archive else " Ecriture du compte-rendu des évolutions de prix terminée."))
+            lines.append(f"{key} {value}\n")
+        lines.sort() #ça sert qu'à aider le débug
+        for line in lines:
+            newfile.write(line)
 
 ## Recueil des arguments donnés dans le shell, gestion des erreurs
 
@@ -169,12 +201,11 @@ if __name__ == "__main__":
     def main():
         global appro, archive, after_series_number, after_quantity, kb
         entrypoint = update_prices
+        files = []
         while len(sys.argv) > 1:
             opt = sys.argv[1]
-            if opt[-4:] == ".pdf":
-                filename = opt
-            elif opt.lower() in brands:
-                brand = opt.lower()
+            if opt.endswith(".pdf"):
+                files.append(opt)
             elif opt == "appro":
                 appro = True
             elif opt == "archive":
@@ -198,19 +229,27 @@ if __name__ == "__main__":
 
         start_time = time()
         try:
-            if brand in pasdappro:
-                appro = False
-                print(f"Le mode appro n'est pas disponible pour {brand}. Les codes de chaque aliments écrits dans la facture ne correspondent pas au code-barre que Chocapix connait. Ce script n'est donc capable que de surveiller l'évolution des prix de {brand}.")
+            if archive and not files:
+                for filename in os.listdir("archive"):
+                    if filename.endswith(".pdf"):
+                        files.append("./archive/"+filename)
             kb = KBHit()
-            entrypoint(filename, brand)
+            parsedfiles = [get_from_file(filename) for filename in files]
+            parsedfiles.sort()
+            for parsedfile in parsedfiles:
+                entrypoint(parsedfile)
+            print("\nBase de données des prix mise à jour." + ("" if archive else " Ecriture du compte-rendu des évolutions de prix terminée."))
         except KeyboardInterrupt:
             print("\nScript interrompu définitivement")
         except UnboundLocalError:
-            print("\nIl faut donner en argument le nom du fichier qui contient la facture sous format pdf (sans oublier le '.pdf'), puis le nom du magasin (Carrefour, Picard...)\nExemple de syntaxe :\npython update_prices.py 21.10_facture.pdf Carrefour")
+            print("\nMauvaise syntaxe. Exemples de syntaxe :\npython be.py 21.10_facture.pdf appro set_pause 2 5\npython be.py archive")
         except FileNotFoundError:
             print("\nLa facture ou la base de données est introuvable. Il faut qu'elles soient dans le même dossier que le script. Vérifier le nom exact de la facture.")
-        except NotImplementedError:
-            print(f"\nLa façon de parser les factures de {brand} n'a pas encore été codée.")
+        except (KeyError, NotImplementedError) as brand:
+            if brand in brands:
+                print(f"\nLa façon de parser les factures de {brand} n'a pas encore été codée.")
+            else:
+                print(f"\nLa marque n'a pas pu être reconnue. Il peut s'agir d'une nouvelle marque (parsing pas encore implémenté) ou alors la forme de la facture a changé (parsing à refaire).")
         end_time = time()
 
         print(f"\nTemps écoulé : {end_time-start_time} secondes\n")
