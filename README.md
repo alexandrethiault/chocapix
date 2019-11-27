@@ -87,15 +87,15 @@ Début dans 3 . 2 . 1 .
 
 3276650121533 1
 
-5601019001030                 // <- Les nombres affichés ne sont pas effacés au fur et à mesure.
+5601019001030                 _<- Les nombres affichés ne sont pas effacés au fur et à mesure._
 
-Script mis en pause. Appuyer sur Entrer pour le poursuivre. // Cela permet de copier coller à la main ce qu'on a manqué
+Script mis en pause. Appuyer sur Entrer pour le poursuivre. _Cela permet de copier coller à la main ce qu'on a manqué_
 
-g                             // <- la lettre tapée pour mettre en pause le script peut s'afficher. Cela n'a aucune importance.
+g                             _<- la lettre tapée pour mettre en pause le script peut s'afficher. Cela n'a aucune importance._
 
 Début dans 3 . 2 . 1 .
 
- 1                            // <- Aucun nombre ne sera affiché deux fois, ce 1 correspond donc au code barre 5601019001030
+ 1                            _<- Aucun nombre ne sera affiché deux fois, ce 1 correspond donc au code barre 5601019001030_
 
 3166291458405 1
 
