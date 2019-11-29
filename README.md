@@ -49,7 +49,7 @@ _Dans des versions précédentes, il fallait lancer la commande une fois pour ch
 
 Lire toute la section avant de commencer à effectuer les opérations décrites.
 
-Ouvrir un invite de commande dans le dossier qui contient le fichier Python et la facture. Ouvrir Chocapix. Diviser l'écran en mosaïque de façon à voir à la fois l'invite de commande (pas besoin de plus d'un tiers de l'écran) et Chocapix. Etre prêt à logguer l'appro en s'assurant que la case pour rentrer le code du premier aliment et la case pour la quantité sont à portée de souris.
+Ouvrir un invite de commande dans le dossier qui contient le fichier Python et la facture. Ouvrir Chocapix. Diviser l'écran en mosaïque de façon à voir à la fois l'invite de commande (pas besoin de plus d'un tiers de l'écran) et Chocapix. Etre prêt à logguer l'appro en s'assurant que la case pour rentrer le code du premier aliment et la case qui apparaîtra pour la quantité sont à portée de souris.
 
 Pour lancer le script sur une facture qui s'appelle "facture.pdf", taper :
 
@@ -57,67 +57,71 @@ python be.py facture.pdf appro
 
 Si un message contenant "[MainThread  ] [WARNI]  Failed to see startup log message; retrying..." s'affiche, l'ignorer.
 
-Quelques instants après le lancement de la commande et juste après un compte à rebours, des nombres vont commencer à s'afficher dans l'invite de commande. Au bout de quelques secondes, cela peut ressembler à :
+Quelques instants après le lancement de la commande et juste après un compte à rebours, des lignes vont commencer à s'afficher dans l'invite de commande. Au bout de quelques secondes, cela peut ressembler à :
 
 X:\Chemin\Du\Dossier> python be.py 06.11_facture.pdf appro
 
-Début dans 3 . 2 . 1 .
+Début dans 3...2...1...
 
-3245390089854 2
+3245390089854 - 12 &nbsp;&nbsp;&nbsp;&nbsp;Aliment acheté en grande quantité
 
-3270190007050 2
+3270190007050 - 5 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Un autre aliment avec moins de prétention
 
-3276650121533 
+3276650121533 - 4 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UN ALIMENT EN CAPS LOCK POURQUOI PAS
   
-Chaque nouveau nombre qui s'affiche dans cet invite de commande, correspond à un code ou une quantité d'un aliment déjà rencontré dans l'archive de factures (pas besoin de créer une nouvelle fiche d'aliment, donc).
+Chaque nouvelle ligne qui s'affiche dans cet invite de commande, correspond à un aliment déjà rencontré dans l'archive de factures (pas besoin de créer une nouvelle fiche d'aliment, donc). Il y a d'abord le code de l'aliment dans la facture, sa quantité livrée, et son nom. Les lignes ont été triées de façon à afficher les articles par ordre décroissant de quantité. 
 
-Il n'y a pas besoin de le copier, c'est fait automatiquement par le script : il ne reste plus qu'à coller chaque nombre dans la bonne case de Chocapix. Il faut simplement le faire avant que le prochain nombre s'affiche, sinon ce nouveau nombre prend sa place dans le presse-papier. De cette manière, avec un ordinateur à souris, la main gauche reste constamment au dessus de Ctrl et V, et la main droite contrôle une souris dont le pointeur ne sort jamais de Chocapix.
+Il est à noter toutefois que des articles inconnus de Chocapix peuvent être donnés par le script à ce moment, au milieu des articles déjà rencontrés. Cela arrivera pour les produits d'entretien ou autres aliments qui ne se logguent pas, que les respos appro n'ont jamais fait connaître à Chocapix, mais que le script a quand même ajouté à sa base de données. Dans ce cas, simplement ignorer la ligne où un tel article apparaît.
 
-Que faire si je rate un ou plusieurs nombres ? Pas de panique, le script peut être mis en pause en tapant n'importe quelle lettre de l'alphabet dans l'invite de commande. Cela doit vous laisser autant de temps que nécessaire pour récupérer le nombre manqué, le copier coller manuellement vers Chocapix. Quand le retard est rattrapé, appuyer sur Entrer dans l'invite de commande et le script continue. Cela peut ressembler à :
+Pour logguer un aliment que le script vient d'afficher, il n'y a pas besoin de copier le code, c'est fait automatiquement : il ne reste plus qu'à le coller dans Chocapix. Il faut simplement le faire avant que la prochaine ligne s'affiche, sinon un nouveau code prend la place de l'ancien dans le presse-papier. De cette manière, avec un ordinateur à souris, la main gauche reste constamment au dessus de Ctrl et V (sauf pour une minorité d'articles achetés en grande quantité, passée dès les premières lignes), et la main droite contrôle une souris dont le pointeur ne sort jamais de Chocapix.
+
+Que faire si je rate un ou plusieurs nombres ? Pas de panique, le script peut être mis en pause en tapant n'importe quelle lettre de l'alphabet dans l'invite de commande. Cela doit vous laisser autant de temps que nécessaire pour récupérer le code manqué et le copier coller manuellement vers Chocapix. Quand le retard est rattrapé, appuyer sur Entrer dans l'invite de commande et le script continue. Cela peut ressembler à :
 
 D:\Alexandre\Chocapix> python be.py 06.11_facture.pdf appro
 
 2019-11-24 14:45:23,856 [MainThread  ] [WARNI]  Failed to see startup log message; retrying...
 
-Début dans 3 . 2 . 1 .
+Début dans 3...2...1...
 
-3245390089854 2
+3245390089854 - 12 &nbsp;&nbsp;&nbsp;&nbsp;Aliment acheté en grande quantité
 
-3270190007050 2
+3270190007050 - 5 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Un autre aliment avec moins de prétention
 
-3276650121533 1
+3276650121533 - 4 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UN ALIMENT EN CAPS LOCK POURQUOI PAS
 
-5601019001030                 _<- Les nombres affichés ne sont pas effacés au fur et à mesure._
+5601019001030 - 4 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Aliment&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<- Les nombres affichés ne sont pas effacés au fur et à mesure._
 
-Script mis en pause. Appuyer sur Entrer pour le poursuivre. _Cela permet de copier coller à la main ce qu'on a manqué_
+Script mis en pause. Appuyer sur Entrer pour le poursuivre.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<- Cela permet de copier coller à la main ce qu'on a manqué_
 
-g                             _<- la lettre tapée pour mettre en pause le script peut s'afficher. Cela n'a aucune importance._
+g &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<- la lettre tapée pour mettre en pause le script peut s'afficher. Cela n'a aucune importance._
 
-Début dans 3 . 2 . 1 .
+Début dans 3...2...1...
 
- 1                            _<- Aucun nombre ne sera affiché deux fois, ce 1 correspond donc au code barre 5601019001030_
-
-3166291458405 1
+3166291458405 - 3 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Aliment
 
 ...
+
+Quand il ne reste plus que des articles achetés en quantité 1, le script lance un autre compte à rebours pour signaler que les lignes vont se succéder beaucoup plus rapidement, puisqu'il n'y a plus besoin de bouger la souris vers la quantité désormais.
  
 Par défaut le temps donné pour coller un nombre avant que le prochain prenne sa place est :
 
-- 1.5 seconde après un numéro de série (puisqu'il suffit de coller et déplacer la souris vers la quantité)
+- 5 secondes maximum dans tous les cas.
 
-- 4 secondes après une quantité (parce que cette fois il faut coller puis ouvrir une nouvelle fiche de loggage)
+- de 3 à 5 secondes, pour une quantité entre 2 et 6 (3 secondes pour 2, +0.5 par unité supplémentaire)
+
+- 1.25 secondes pour les articles en quantité 1.
 
 Pour changer ces temps de manière ponctuelle pour une seule appro, on pourra à la place de la commande vue plus haut écrire :
 
-python be.py 06.11_facture.pdf appro set_pause x y
+python be.py 06.11_facture.pdf appro set_pause a b c d
 
-Où x et y (entiers ou à virgule) remplaceront respectivement le 1.5 et le 4. Choisissez les temps idéaux pour terminer l'appro le plus rapidement possible sans avoir à pauser régulièrement le script. 
+Où a b c et d (entiers ou à virgule) remplaceront respectivement 1.25, 3, 0.5 et 5. Choisissez les temps idéaux pour terminer l'appro le plus rapidement possible sans avoir à pauser trop souvent le script. 
 
-_Ces paramètres peuvent aussi être changés définitivement en modifiant le code du fichier Python : les deux valeurs y sont définies dans les premières lignes après les imports de modules._
+_Ces paramètres peuvent aussi être changés définitivement en modifiant le code du fichier Python : les valeurs y sont définies dans les premières lignes après les imports de modules._
 
 A la fin de cette première phase, le script affiche dans l'invite de commandes une liste d'articles dont le prix a changé. Ces articles ont déjà été loggués, il suffit de modifier leur prix manuellement.
 
-Enfin, le script affiche dans l'invite de commandes la liste des nouveaux articles, jamais rencontrés. Par "jamais rencontré" il faut comprendre "jamais rencontré par le script". En effet si la section "Usage pour la première fois" n'a pas été suivie ou si des factures sont manquantes, le script peut ne pas connaître un article qui a bien été loggué dans Chocapix il y a longtemps. Dans ce cas, il n'a pas été cité plus haut par le script et il va falloir le logguer à la main maintenant.
+Enfin, le script affiche dans l'invite de commande la liste des nouveaux articles, jamais rencontrés. Par "jamais rencontré" il faut comprendre "jamais rencontré par le script". En effet si la section "Usage pour la première fois" n'a pas été suivie ou si des factures sont manquantes, le script peut ne pas connaître un article qui a bien été loggué dans Chocapix il y a longtemps. Dans ce cas, il n'a pas été cité plus haut par le script et il va falloir le logguer à la main maintenant.
 
 C'est terminé. L'invite de commande peut être fermé. A l'issue de l'appro, un compte-rendu au format .txt est créé, listant tous les changements de prix. Il n'y a aucun danger à modifier ou supprimer ce compte-rendu, sa vocation est purement informative. Il peut par exemple être recopié dans l'onglet des nouvelles par le respo news afin d'informer les membres de sa section sur les bonnes ou mauvaises surprises qui peuvent les attendre en logguant leurs aliments préférés.
 
@@ -126,7 +130,7 @@ Plusieurs utilisations qui ne rentrent dans aucun des deux cadres cités plus ha
 
 Pour lancer le script en mode appro sur une facture qui se trouve dans le dossier archive, il suffit de faire précéder le nom de la facture par "./archive/", comme on pourrait s'y attendre. Rien n'empêche non plus de chercher des fichiers .pdf qui sont en dehors du dossier contenant le script. Il reste donc possible de lancer le script sur une vieille facture, ce qui aura pour conséquence probable de remplacer des prix actuels dans les bases de données de prix par des valeurs dépassées. Aussi, l'éventuel compte-rendu créé n'aura aucun sens puisqu'il montrera les "évolutions" de prix de cette remontée dans le temps. A utiliser avec modération, donc. Pour faire rentrer les choses dans l'ordre, on peut lancer le script sur toutes les factures de la même marque entre celle-là et la plus récente dans l'ordre chronologique, ce qui peut être fait avec la seule commande "python be.py archive".
 
-On peut reproduire le comportement du mode appro sans avoir à attendre l'affichage des numéros de série et quantités grâce à "set_pause 0 0". Cela peut être utile pour du débug.
+On peut reproduire le comportement du mode appro sans avoir à attendre l'affichage des numéros de série et quantités grâce à "set_pause 0 0 0 0". Cela peut être utile pour du débug.
 
 Il est possible de surveiller les évolutions de prix et de produire un compte-rendu en dehors du mode appro. Il suffit pour cela de ne fournir aucun des deux mots-clés appro ou archive. Ainsi, au lieu de suivre le paragraphe "Utilisation pour la première fois" à la lettre, on pourra ne mettre dans le dossier archive que les factures de plus d'un mois, et après avoir tapé "python be.py archive", on pourra appeler "python be.py facture.pdf" pour toutes ces factures passées mais récentes, que l'on n'a pas mises dans le dossier archive, et le script produira alors tous les compte-rendus des appros récentes. Le script triera ici aussi les factures par date avant de calculer les évolutions.
 
