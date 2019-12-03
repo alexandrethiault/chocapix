@@ -4,7 +4,7 @@
 
 Le script présenté ici a deux fonctions :
 1) Suivre l'évolution des prix de supermarché au moment du loggage d'une nouvelle appro en créant un fichier récapitulant ces changements, de façon à pouvoir informer la section de ces changements de prix sans que le respo appro n'ait à y consacrer son temps et son énergie.
-2) Optimiser la productivité du respo appro dans le loggage pour accélérer cette opération fastidieuse et répétitive, en lui retirant la charge de la plupart des actions (allers-retours de la souris entre facture et Chocapix, interruptions régulières par les nouveaux aliments qui mettent plus de temps à logguer, vérification au cas par cas des changements de prix des aliments) qu'il a toujours dû faire pour logguer une appro.
+2) Optimiser la productivité du respo appro dans le loggage pour accélérer cette opération fastidieuse et répétitive, en lui retirant la charge de la plupart des actions (allers-retours de la souris entre facture et Chocapix, interruptions régulières par les nouveaux aliments qui mettent plus de temps à logguer, vérification au cas par cas des changements de prix des aliments) qu'il a toujours dû faire pour logguer une appro. Cette fonctionnalité est pensée et optimisée pour les utilisateurs de souris, mais même sans souris un gain de temps presque aussi important est possible. L'objectif est de faire tomber le temps du loggage des appros à environ 5 minutes. Ce script se présente donc comme concurrent et alternative au loggage avec scanner de code-barres.
 
 Toutefois, ce script n'a pas pour vocation :
 1) De remplacer le respo appro. Le script n'est pas capable d'effectuer tout seul l'appro, certaines actions restent à la charge du respo appro.
@@ -69,7 +69,7 @@ Début dans 3...2...1...
 
 3276650121533 - 4 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UN ALIMENT EN CAPS LOCK POURQUOI PAS
   
-Chaque nouvelle ligne qui s'affiche dans cet invite de commande, correspond à un aliment déjà rencontré dans l'archive de factures (pas besoin de créer une nouvelle fiche d'aliment, donc). Il y a d'abord le code de l'aliment dans la facture, sa quantité livrée, et son nom. Les lignes ont été triées de façon à afficher les articles par ordre décroissant de quantité. 
+Chaque nouvelle ligne qui s'affiche dans cet invite de commande, correspond à un aliment déjà rencontré dans l'archive de factures (pas besoin de créer une nouvelle fiche d'aliment, donc). Il y a d'abord le code (souvent le code-barres) de l'aliment dans la facture, sa quantité livrée, et son nom. Les lignes ont été triées de façon à afficher les articles par ordre décroissant de quantité. 
 
 Il est à noter toutefois que des articles inconnus de Chocapix peuvent être donnés par le script à ce moment, au milieu des articles déjà rencontrés. Cela arrivera pour les produits d'entretien ou autres aliments qui ne se logguent pas, que les respos appro n'ont jamais fait connaître à Chocapix, mais que le script a quand même ajouté à sa base de données. Dans ce cas, simplement ignorer la ligne où un tel article apparaît.
 
@@ -107,15 +107,15 @@ Par défaut le temps donné pour coller un nombre avant que le prochain prenne s
 
 - 5 secondes maximum dans tous les cas.
 
-- de 3 à 5 secondes, pour une quantité entre 2 et 6 (3 secondes pour 2, +0.5 par unité supplémentaire)
+- de 3 à 5 secondes, pour une quantité entre 2 et 6 (3 secondes pour 2, +0,5 par unité supplémentaire)
 
-- 1.25 secondes pour les articles en quantité 1.
+- 1,25 secondes pour les articles en quantité 1.
 
 Pour changer ces temps de manière ponctuelle pour une seule appro, on pourra à la place de la commande vue plus haut écrire :
 
 python be.py 06.11_facture.pdf appro set_pause a b c d
 
-Où a b c et d (entiers ou à virgule) remplaceront respectivement 1.25, 3, 0.5 et 5. Choisissez les temps idéaux pour terminer l'appro le plus rapidement possible sans avoir à pauser trop souvent le script. 
+Où a b c et d (entiers ou à virgule) remplaceront respectivement 1,25, 3, 0,5 et 5. Choisissez les temps idéaux pour terminer l'appro le plus rapidement possible sans avoir à pauser trop souvent le script. Sans souris, le mieux est d'utiliser les raccourcis clavier (shift et ctrl+shift pour passer de la case code-barres à la case quantité). Pour les utilisateurs de pavé tactile, l'expérience montre que "set_pause 1,25 4 0,25 5" est plus adapté.
 
 _Ces paramètres peuvent aussi être changés définitivement en modifiant le code du fichier Python : les valeurs y sont définies dans les premières lignes après les imports de modules._
 
@@ -147,3 +147,6 @@ Utiliser le script en mode appro sur un magasin qui ne donne pas les codes-barre
 # Quelques messages d'erreur exotiques
 - RuntimeError: Unable to start Tika server. (après un traceback et un message d'erreur contenant Unable to run java; is it installed?) Ce problème rencontré avec un WSL Ubuntu a été résolu en installant Java. Pour plus de détails, voir https://stackoverflow.com/questions/36478741/installing-oracle-jdk-on-windows-subsystem-for-linux
 - Not Implemented Error: Pyperclip could not find a copy/paste mechanism for your system. Ce problème rencontré sous Ubuntu a été résolu en installant un mécanisme de copier/coller. Pour plus de détails, voir https://pyperclip.readthedocs.io/en/latest/introduction.html#not-implemented-error
+
+# Fonctionnalités à venir
+Supporter les articles non loggués (liquide vaisselle, sel, beurre...) au moyen d'une whitelist pour ne pas déranger le processus d'appro en affichant dans la shell un article "nouveau" pour chocapix au milieu des articles connus.
