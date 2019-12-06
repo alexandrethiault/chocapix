@@ -41,7 +41,11 @@ python be.py archive
   
 Si un message contenant "[MainThread  ] [WARNI]  Failed to see startup log message; retrying..." s'affiche, l'ignorer, ça devrait terminer au bout de quelques secondes.
 
-A l'issue, s'il n'y a pas d'appro à faire tout de suite, l'invite de commande peut être fermé. Un fichier du nom de "prix_marque.txt" a été ajouté pour chaque marque représentée par au moins une facture (Carrefour, Picard...) : il fait office de base de données des prix pour cette marque, et le script l'utilise pour comparer les prix des futures appros. Il est à ne pas modifier ni supprimer. En revanche il est à votre charge de le copier quelque part (en faire une sauvegarde) pour vous prémunir d'une utilisation erronée du script qui viendrait à modifier de manière non souhaitée ce fichier.
+A l'issue, s'il n'y a pas d'appro à faire tout de suite, l'invite de commande peut être fermé. Un fichier du nom de "prix_marque.txt" a été ajouté pour chaque marque représentée par au moins une facture (Carrefour, Picard...) : il fait office de base de données des prix pour cette marque, et le script l'utilise pour comparer les prix des futures appros.
+
+Ouvrir ces fichiers texte. Les articles y sont listés avec à chaque ligne, un 0, puis le code d'article présent dans les factures, puis le prix unité, puis le nom de l'article. Parcourir rapidement cette liste d'articles et remplacer les 0 en début de ligne par des 1 pour tous les articles que vous ne souhaitez pas logguer lors d'une appro (des produits en open, par exemple, produit d'entretien, papier cuisson, sel, épices...). Cela permettra au script d'ignorer ces articles à l'avenir.
+
+A part pour le premier caractère de chaque ligne, ces fichiers ne doivent pas être modifiés. En revanche il est à votre charge de les copier quelque part (en faire une sauvegarde) pour vous prémunir d'une utilisation erronée du script qui viendrait à modifier de manière non souhaitée ces fichiers.
 
 _Dans des versions précédentes, il fallait lancer la commande une fois pour chaque ancienne facture et veiller à faire cela dans l'ordre chronologique des factures. Il fallait aussi fournir en argument le nom du supermarché d'où venait chaque facture. Aujourd'hui, le script détecte tout seul la marque et la date, c'est pourquoi il suffit de tout mettre dans un dossier "archive". Le script triera tout seul les factures par date pour avoir dans la base de données finale les prix les plus actuels de chaque aliment._
 
@@ -69,13 +73,11 @@ Début dans 3...2...1...
 
 3276650121533 - 4 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UN ALIMENT EN CAPS LOCK POURQUOI PAS
   
-Chaque nouvelle ligne qui s'affiche dans cet invite de commande, correspond à un aliment déjà rencontré dans l'archive de factures (pas besoin de créer une nouvelle fiche d'aliment, donc). Il y a d'abord le code (souvent le code-barres) de l'aliment dans la facture, sa quantité livrée, et son nom. Les lignes ont été triées de façon à afficher les articles par ordre décroissant de quantité. 
-
-Il est à noter toutefois que des articles inconnus de Chocapix peuvent être donnés par le script à ce moment, au milieu des articles déjà rencontrés. Cela arrivera pour les produits d'entretien ou autres aliments qui ne se logguent pas, que les respos appro n'ont jamais fait connaître à Chocapix, mais que le script a quand même ajouté à sa base de données. Dans ce cas, simplement ignorer la ligne où un tel article apparaît.
+Chaque nouvelle ligne qui s'affiche dans cet invite de commande, correspond à un aliment déjà rencontré dans l'archive de factures (pas besoin de créer une nouvelle fiche d'aliment, donc). Il y a d'abord le code (souvent le code-barres) de l'aliment dans la facture, sa quantité livrée, et son nom. Les lignes ont été triées de façon à afficher les articles par ordre décroissant de quantité.
 
 Pour logguer un aliment que le script vient d'afficher, il n'y a pas besoin de copier le code, c'est fait automatiquement : il ne reste plus qu'à le coller dans Chocapix. Il faut simplement le faire avant que la prochaine ligne s'affiche, sinon un nouveau code prend la place de l'ancien dans le presse-papier. De cette manière, avec un ordinateur à souris, la main gauche reste constamment au dessus de Ctrl et V (sauf pour une minorité d'articles achetés en grande quantité, passée dès les premières lignes), et la main droite contrôle une souris dont le pointeur ne sort jamais de Chocapix.
 
-Que faire si je rate un ou plusieurs nombres ? Pas de panique, le script peut être mis en pause en tapant n'importe quelle lettre de l'alphabet dans l'invite de commande. Cela doit vous laisser autant de temps que nécessaire pour récupérer le code manqué et le copier coller manuellement vers Chocapix. Quand le retard est rattrapé, appuyer sur Entrer dans l'invite de commande et le script continue. Cela peut ressembler à :
+Que faire si je rate une ou plusieurs lignes ? Pas de panique, le script peut être mis en pause en tapant n'importe quelle lettre de l'alphabet dans l'invite de commande. Cela doit vous laisser autant de temps que nécessaire pour récupérer le code manqué et le copier coller manuellement vers Chocapix. Quand le retard est rattrapé, appuyer sur Entrer dans l'invite de commande et le script continue. Cela peut ressembler à :
 
 D:\Alexandre\Chocapix> python be.py 06.11_facture.pdf appro
 
@@ -89,7 +91,7 @@ Début dans 3...2...1...
 
 3276650121533 - 4 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UN ALIMENT EN CAPS LOCK POURQUOI PAS
 
-5601019001030 - 4 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Aliment&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<- Les nombres affichés ne sont pas effacés au fur et à mesure._
+5601019001030 - 4 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Aliment&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<- Les lignes affichées ne sont pas effacées au fur et à mesure._
 
 Script mis en pause. Appuyer sur Entrer pour le poursuivre.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<- Cela permet de copier coller à la main ce qu'on a manqué_
 
@@ -123,7 +125,9 @@ A la fin de cette première phase, le script affiche dans l'invite de commandes 
 
 Enfin, le script affiche dans l'invite de commande la liste des nouveaux articles, jamais rencontrés. Par "jamais rencontré" il faut comprendre "jamais rencontré par le script". En effet si la section "Usage pour la première fois" n'a pas été suivie ou si des factures sont manquantes, le script peut ne pas connaître un article qui a bien été loggué dans Chocapix il y a longtemps. Dans ce cas, il n'a pas été cité plus haut par le script et il va falloir le logguer à la main maintenant.
 
-C'est terminé. L'invite de commande peut être fermé. A l'issue de l'appro, un compte-rendu au format .txt est créé, listant tous les changements de prix. Il n'y a aucun danger à modifier ou supprimer ce compte-rendu, sa vocation est purement informative. Il peut par exemple être recopié dans l'onglet des nouvelles par le respo news afin d'informer les membres de sa section sur les bonnes ou mauvaises surprises qui peuvent les attendre en logguant leurs aliments préférés.
+C'est terminé. L'invite de commande peut être fermé. A l'issue de l'appro, un compte-rendu au format .txt est créé, listant tous les changements de prix, y compris des articles non loggables. Il n'y a aucun danger à modifier ou supprimer ce compte-rendu, sa vocation est purement informative. Le respo news peut par exemple recopier les changements importants dans l'onglet des nouvelles par le respo news afin d'informer les membres de sa section sur les bonnes ou mauvaises surprises qui peuvent les attendre en loggant leurs aliments préférés.
+
+Il est à noter que des articles inconnus de Chocapix peuvent être donnés par le script lors de la première phase, au milieu des articles déjà rencontrés. Cela arrivera pour les produits d'entretien ou autres aliments qui ne se logguent pas, que les respos appro n'ont jamais fait connaître à Chocapix, mais que le script a quand même ajouté à sa base de données. Vous pouvez simplement ignorer la ligne et attendre la suivante. Mais alors cet article sera encore donné par le script la prochaine fois qu'il sera acheté. Pour ne plus jamais le voir, deux solutions. Soit à la fin de l'appro vous cherchez l'article dans la base de données (prix_marque.txt) et vous remplacez le 0 au début de sa ligne par un 1. Soit vous mettez en pause le script, et avant d'appuyer sur Entrer pour mettre fin à la pause, vous écrivez "whitelist xxx" où xxx est le code de l'aliment à ne jamais logguer.
 
 # Utilisation non attendue du script
 Plusieurs utilisations qui ne rentrent dans aucun des deux cadres cités plus haut (mise à niveau avec l'archive, et appro) peuvent être faites de ce script. Fidèle à la philisophie de Python, "we are all consenting adults here", la plupart de ces cas de figure ne mènent pas à une erreur et peuvent être explorés par un utilisateur curieux. En voici quelques exemples.
@@ -140,13 +144,13 @@ Dans le mode appro, donner en argument le nom de la facture sert à dire au scri
 
 Attention à ne pas renommer le dossier "archive" en autre chose et espérer que remplacer le mot-clé "archive" par le nouveau nom de dossier suffira. Le mot-clé n'est pas nommé d'après le dossier, et le nom du dossier que le script tentera d'explorer est hard-codé comme devant être "archive".
 
-Appuyer sur Ctrl+C dans l'invite de commande arrête totalement le script. Mais comme les changements de prix ne sont enregistrés dans une base de donnée qu'au dernier moment à la fin de l'exécution du script, ces changements ne seront pas encore enregistrés au moment du Ctrl+C fautif. Il n'est donc pas primordial de finir sur le champ le loggage de l'appro quand elle a été commencée. De même, si Chocapix plante en plein milieu de l'appro, on peut sans crainte relancer le script après un Ctrl+C, les changements de prix seront encore signalés et les nouveaux articles seront encore considérés nouveaux. L'arrêt par Ctrl+C ne se produit que si aucun texte n'est sélectionné : cela ne concerne donc pas le fait de copier manuellement un nombre pendant une pause du script.
+Appuyer sur Ctrl+C dans l'invite de commande arrête totalement le script. Mais comme les changements de prix ne sont enregistrés dans une base de donnée qu'au dernier moment à la fin de l'exécution du script, ces changements ne seront pas encore enregistrés au moment du Ctrl+C fautif. Il n'est donc pas primordial de finir sur le champ le loggage de l'appro quand il a été commencé. De même, si Chocapix plante en plein milieu de l'appro, on peut sans crainte relancer le script après un Ctrl+C, les changements de prix seront encore signalés et les nouveaux articles seront encore considérés nouveaux. L'arrêt par Ctrl+C ne se produit que si aucun texte n'est sélectionné : cela ne concerne donc pas le fait de copier manuellement un nombre pendant une pause du script.
 
-Utiliser le script en mode appro sur un magasin qui ne donne pas les codes-barres de ses aliments dans la facture fait perdre au script un de ses deux intérêts. Par exemple Picard utilise dans ses factures des codes d'article qui ne correspondent pas au code-barre. Si Chocapix a été renseigné avec le code-barre, le script ne peut pas aider à faire les appros. C'est réparable uniquement en modifiant à la main tous les codes-barres Picard retenus par Chocapix pour les remplacer par les codes de la facture. En attendant, le script ne sera bon qu'à faire ses compte-rendus d'évolution de prix. Il est toujours possible d'écrire le mot-clé "appro" avec ces marques mais le script l'ignorera.
+Utiliser le script en mode appro sur un magasin qui ne donne pas les codes-barres de ses aliments dans la facture fait perdre au script son intérêt majeur. Par exemple Picard utilise dans ses factures des codes d'article qui ne correspondent pas au code-barres. Si Chocapix a été renseigné avec le code-barres, le script ne peut pas aider à faire les appros. C'est réparable uniquement en modifiant à la main tous les codes-barres Picard retenus par Chocapix pour les remplacer par les codes de la facture. En attendant, le script ne sera bon qu'à faire ses compte-rendus d'évolution de prix. Il est toujours possible d'écrire le mot-clé "appro" avec ces marques mais le script l'ignorera.
 
 # Quelques messages d'erreur exotiques
 - RuntimeError: Unable to start Tika server. (après un traceback et un message d'erreur contenant Unable to run java; is it installed?) Ce problème rencontré avec un WSL Ubuntu a été résolu en installant Java. Pour plus de détails, voir https://stackoverflow.com/questions/36478741/installing-oracle-jdk-on-windows-subsystem-for-linux
 - Not Implemented Error: Pyperclip could not find a copy/paste mechanism for your system. Ce problème rencontré sous Ubuntu a été résolu en installant un mécanisme de copier/coller. Pour plus de détails, voir https://pyperclip.readthedocs.io/en/latest/introduction.html#not-implemented-error
 
 # Fonctionnalités à venir
-Supporter les articles non loggués (liquide vaisselle, sel, beurre...) au moyen d'une whitelist pour ne pas déranger le processus d'appro en affichant dans la shell un article "nouveau" pour chocapix au milieu des articles connus.
+- 
