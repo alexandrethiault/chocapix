@@ -1,5 +1,8 @@
 # Mode d'emploi
 
+
+/!\ La branche "master" de projet est uniquement maintenue le temps de tester la nouvelle, où des améliorations importantes ont été faites entre temps (prise en charge d'Auchan et des articles non-loggables) donc passez sur la branche "support-whitelist" avant de continuer
+
 # Qu'est-ce que c'est
 
 Le script présenté ici a deux fonctions :
