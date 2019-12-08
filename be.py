@@ -186,7 +186,6 @@ def get_from_file(filename):
                 if i >= len(lines):
                     break
                 line.extend(lines[i].split(' '))
-            print(line)
             try:
                 articles.append(Article(line, brand))
             except (ValueError, IndexError) as e:
