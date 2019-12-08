@@ -30,25 +30,45 @@ def paste_time(quantity):
     else:  # > 5 mais aussi nombres à virgule (légumes vendus au poids...)
         return time_max
 
-brands = ["carrefour", "auchan", "picard"]
-pasdappro = ["picard"]  # code facture =/= code barres connu par Chocapix
+brands = ["carrefour", "auchan", "cora", "picard"]
+
+### Parsing
+
+#  Mot qui donne fiablement l'origine de la facture si on le trouve dedans
 keyword = {
     "carrefour": "OOSHOP",
     "auchan": "Auchan Direct",
+    "cora": "coradrive",
     "picard": "SIRET : 78493968805071"
-}  # mot qui donne fiablement l'origine de la facture si on le trouve dedans
-codelength = {
-    "carrefour": 13,
-    "auchan": 13,
-    "picard": 6
-}  # longueur du code barre qui marque le début des lignes d'aliments
+}
+
+#  Emplacement de la date dans le raw parse de la facture
 finddate = {
     "carrefour": (lambda s: s[s.find("Date de commande : ")+19:s.find("Date de commande : ")+29]),
     "auchan": (lambda s: s[s.find("FACTURE N° ")+32:s.find("FACTURE N° ")+42]),
+    "cora": (lambda s: s[s.find(", le ")+5:s.find(", le ")+15]),
     "picard": (lambda s: s[s.find("DATE : ")+7:s.find("DATE : ")+17])
 }
 
-### Parsing
+#  Indicateur (pas forcément 100% fiable) qu'un article commence à cette ligne
+def article_with_code(length, line):
+    return len(line)>length and line[:length].isdigit() and line[length] == " "
+
+def article_cora(line):
+    if not line: return False
+    if "Frais de " in line: return False
+    if "Code TVA" in line: return False
+    if "3 5.50 % " in line: return False
+    if "7 20.00 % " in line: return False
+    if "Cora - Siège Social" in line: return False
+    return True
+
+is_article = {
+    "carrefour": (lambda line: article_with_code(13, line)),
+    "auchan": (lambda line: article_with_code(13, line)),
+    "cora": article_cora,
+    "picard": (lambda line: article_with_code(6, line))
+}
 
 def new_parsing(filename):
     # Pour apprendre à parser des nouvelles marques
@@ -88,6 +108,11 @@ class Article:
         Subtilité (traitée en amont) : certains noms d'articles sont longs, et
         sont sur plusieurs lignes voire pages.
 
+        Pour Cora un line typique ressemble à :
+        ['Cora', 'camembert', 'au', 'lait', 'pasteurisé', '250', 'g', '1.32', '€', '3', '3', '3.75', '€', '3.96', '€']
+        ou
+        ['Citron', 'jaune', '(Origine:', 'Espagne)', '740g', 'à', '2.89', '€/kg', '1.99', '€', '1', '3', '1.89', '€', '1.99', '€']
+
         Pour Picard un line typique ressemble à :
         ['012949', '300G', 'GIROLLES', '2', '7,95', '€', '15,90', '€', '5,50%']
         ou ['082109', '2', 'VACHERIN', 'VANILLE/FRAMB', '1', 'OFFERT']
@@ -119,14 +144,42 @@ class Article:
                 stm2 = stm2[stm2.index('.')+3:]
             self.price = float(stm2[:stm2.index('.')+3])
             self.TVA = float(line[-1])
+            self.ref = self.sernumber
         elif brand == "auchan":
             if len(line[0]) != 13 or line[0] == "2007984000383":
-                raise ValueError #'2007984000383' est le frais de livraison
+                raise ValueError # '2007984000383' est le frais de livraison
             self.sernumber = line[0]
             self.name = " ".join(line[1:-6])
             self.qty = int(line[-6])
             self.TVA = float(line[-2])
             self.price = round(float(line[-5]) * (1. + self.TVA*0.01), 2)
+            self.ref = self.sernumber
+        elif brand == "cora":
+            if line[-1] != "€" or line[-3] != "€":
+                raise ValueError
+            self.sernumber = "-"
+            TVAcode = line[-5]
+            if TVAcode == "3":
+                self.TVA = 5.50
+            else:
+                self.TVA = 20.00
+            if "€/kg" in line:
+                i = line.index("€/kg")
+                self.name = " ".join(line[:i-3])
+                self.price = float(line[i-1])
+                qty = line[i-3]
+                if "kg" in qty:
+                    self.qty = float(qty[:-2])
+                elif "g" in qty:
+                    self.qty = round(float(qty[:-1])*0.001, 3)
+                else:
+                    raise ValueError
+            else:
+                shift = -2 if line[-6] == "€" else 0
+                self.name = " ".join(line[:-8 + shift])
+                self.price = float(line[-8 + shift])
+                self.qty = int(line[-6 + shift])
+            self.ref = self.name
         elif brand == "picard":
             if len(line[0]) != 6:
                 raise ValueError
@@ -142,6 +195,7 @@ class Article:
                 self.qty = int(line[-6])
             self.price = float(line[-5].replace(',', '.'))
             self.TVA = float(line[-1][:-1].replace(',', '.'))
+            self.ref = self.sernumber
         else:
             raise NotImplementedError(brand)
 
@@ -171,18 +225,18 @@ def get_from_file(filename):
         raise NotImplementedError("")
     articles = []
     lines = string.splitlines()
-    i=0
+    i = 0
     while i<len(lines):
-        line = lines[i].split(' ')
-        if line and line[0].isdigit() and len(line[0]) == codelength[brand]:
+        if is_article[brand](lines[i]):
+            line = lines[i].split(' ')
             if i+1 < len(lines) and lines[i+1].split(' ') != ['']:
-                #  Certains articles sont sur plusieurs lignes
+                # Certains articles sont sur plusieurs lignes
                 while i+1 < len(lines) and lines[i+1].split(' ') != ['']:
                     i += 1
                     line.extend(lines[i].split(' '))
-                    #  Je ne garantis donc pas l'exactitude du nom pour Auchan
-                    #  Ces fdp peuvent écrire des articles sur 2 pages
-                i += 2 #  Mdr à ce stade faut pas chercher pourquoi
+                    # Je ne garantis donc pas l'exactitude du nom pour Auchan
+                    # Ces fdp peuvent écrire des articles sur 2 pages
+                i += 2 # Ca a l'air spécifique mais en fait non
                 if i >= len(lines):
                     break
                 line.extend(lines[i].split(' '))
@@ -238,23 +292,24 @@ def let_user_pause(timeout):
             print("\nScript mis en pause. Appuyer sur Entrer pour le poursuivre.")
             sleep(3)  # Ignorer les éventuelles fausses manips pendant 3s
             msg = input()  # Attendre Entrer pour la fin de la pause
-            return True, msg
+            return True, msg[:200]  # au cas où user fait trop le malin
     return False, ""
 
 def show_and_copy(article):
     # Afficher un article dans l'invite de commande, copier son code sur le
     # presse-papier, et détecter si l'utilisateur a voulu whitelister qqc
-    pyperclip.copy(article.sernumber)
-    print(f"{article.sernumber} - {article.qty}\t{article.name}")
+    pyperclip.copy(article.ref)
+    if article.sernumber != "-":
+        print(f"{article.sernumber} - {article.qty}\t{article.name}")
+    else:
+        print(f"{article.qty}\t{article.name}")
     paused, msg = let_user_pause(paste_time(article.qty))
     if "whitelist" in msg.lower():
-        to_whitelist = msg.lower().split(' ')
-        for sernum in to_whitelist:
-            if sernum in prices or sernum == article.sernumber:
-                hidden.add(sernum)
-                print(f"Article {sernum} whitelisté avec succès")
-            elif "whitelist" not in sernum:
-                print(f"Article {sernum} inconnu")
+        to_whitelist = [msg[i:j] for i in range(len(msg)) for j in range(i+1, len(msg)+1)]
+        for ref in to_whitelist:
+            if ref in prices or ref == article.ref:
+                hidden.add(ref)
+                print(f"Article {ref} whitelisté avec succès")
     if paused:
         preparation()
 
@@ -264,17 +319,18 @@ def group_by_sernum(articles):
     # Plusieurs articles d'une facture peuvent concerner un même aliment
     ans = {}
     for article in articles:
-        if article.sernumber in ans:
-            ans[article.sernumber].qty += article.qty
-            ans[article.sernumber].qty = round(ans[article.sernumber].qty, 5)
+        if article.ref in ans:
+            ans[article.ref].qty += article.qty
+            ans[article.ref].qty = round(ans[article.ref].qty, 3)
         else:
-            ans[article.sernumber] = article
+            ans[article.ref] = article
     return list(ans.values())
 
 def update_prices(parsedfile):
     date, brand, articles = parsedfile
     # Récupérer les données de la base de données des prix si elle existe
     global prices, hidden
+    codes = {}
     prices = {}
     names = {}
     hidden = set()
@@ -282,9 +338,12 @@ def update_prices(parsedfile):
         with open(f"prix_{brand}.txt", 'r') as former:
             lines = [line.split() for line in former.readlines()]
             for line in lines:
-                wl, key, value = line[:3]
+                wl, code, value = line[:3]
+                name = " ".join(line[3:])
+                key = code if code != "-" else name
                 prices[key] = float(value)
-                names[key] = " ".join(line[3:])
+                names[key] = name
+                codes[key] = code
                 if wl == "1":
                     hidden.add(key)
     except:
@@ -300,9 +359,9 @@ def update_prices(parsedfile):
     for article in articles:
         if article.qty == 0:
             break  # C'est trié décroissant donc y aura plus que des 0
-        if article.sernumber in prices:
-            former_price = prices[article.sernumber]
-            if appro and article.sernumber not in hidden:
+        if article.ref in prices:
+            former_price = prices[article.ref]
+            if appro and article.ref not in hidden:
                 if article.qty == 1 and not unique_started:
                     unique_started = True
                     preparation(1)
@@ -314,8 +373,9 @@ def update_prices(parsedfile):
                 newprices.append((former_price, article))
         else:
             newarticles.append(article)
-        prices[article.sernumber] = article.price
-        names[article.sernumber] = article.name
+        codes[article.ref] = article.sernumber
+        prices[article.ref] = article.price
+        names[article.ref] = article.name
 
     # Lister et créer un compte rendu des changements de prix...
     if not archive:
@@ -330,12 +390,11 @@ def update_prices(parsedfile):
                 print("\nNouveaux articles :")
             for article in newarticles:
                 print(article)
-
     # Réécrire une base de données des prix à la place de l'ancienne
     with open(f"prix_{brand}.txt", 'w') as newfile:
         lines = []
         for key, value in prices.items():
-            lines.append(f"{1*(key in hidden)} {key} {value} {names[key]}\n")
+            lines.append(f"{1*(key in hidden)} {codes[key]} {value} {names[key]}\n")
         lines.sort(key=lambda st: st[2:])  # ça sert qu'à aider le débug
         for line in lines:
             newfile.write(line)
@@ -368,7 +427,7 @@ if __name__ == "__main__":
                     time_max = float(sys.argv[2].replace(',', '.'))
                     sys.argv.pop(2)
                 except:
-                    print(f"La commande {opt} demande 4 nombres après. Ces 2 nombres doivent être entiers ou à virgule.")
+                    print(f"La commande {opt} demande 4 nombres après. Ces 4 nombres doivent être entiers ou à virgule.")
                     sys.exit(1)
             else:
                 print(f"Option inconnue \"{sys.argv[1]}\".")
