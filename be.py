@@ -5,6 +5,9 @@ import os
 import sys
 import pyperclip
 
+from tika import parser
+from time import time, sleep
+
 if os.name == 'nt':
     import msvcrt
 else:
@@ -12,36 +15,40 @@ else:
     import atexit
     from select import select
 
-from tika import parser
-from time import time, sleep
+### Variables globales
 
-## Variables globales
-
-time_1 = 1.25 # temps pour une quantité 1
-time_2 = 3 # temps pour une quantité 2
-time_more = 0.5 # temps supplémentaire pour chaque +1 en quantité
-time_max = 5 # temps max
+time_1 = 1.25    # temps pour une quantité 1
+time_2 = 3       # temps pour une quantité 2
+time_more = 0.5  # temps supplémentaire pour chaque +1 en quantité
+time_max = 5     # temps max
 
 def paste_time(quantity):
     if quantity == 1:
         return time_1
     elif quantity in [2, 3, 4, 5]:
         return min(time_2 + (quantity-2) * time_more, time_max)
-    else: # > 5 mais aussi nombres à virgule (légumes vendus au poids...)
+    else:  # > 5 mais aussi nombres à virgule (légumes vendus au poids...)
         return time_max
 
-brands = ["carrefour", "picard"]
-pasdappro = ["picard"] # code facture =/= code barres connu par Chocapix
+brands = ["carrefour", "auchan", "picard"]
+pasdappro = ["picard"]  # code facture =/= code barres connu par Chocapix
 keyword = {
     "carrefour": "OOSHOP",
+    "auchan": "Auchan Direct",
     "picard": "SIRET : 78493968805071"
-} # mot qui donne fiablement l'origine de la facture si on le trouve dedans
+}  # mot qui donne fiablement l'origine de la facture si on le trouve dedans
+codelength = {
+    "carrefour": 13,
+    "auchan": 13,
+    "picard": 6
+}  # longueur du code barre qui marque le début des lignes d'aliments
 finddate = {
-    "picard": (lambda s: s[s.find("DATE : ")+7:s.find("DATE : ")+17]),
-    "carrefour" : (lambda s: s[s.find("Date de commande : ")+19:s.find("Date de commande : ")+29])
+    "carrefour": (lambda s: s[s.find("Date de commande : ")+19:s.find("Date de commande : ")+29]),
+    "auchan": (lambda s: s[s.find("FACTURE N° ")+32:s.find("FACTURE N° ")+42]),
+    "picard": (lambda s: s[s.find("DATE : ")+7:s.find("DATE : ")+17])
 }
 
-## Parsing
+### Parsing
 
 def new_parsing(filename):
     # Pour apprendre à parser des nouvelles marques
@@ -50,13 +57,14 @@ def new_parsing(filename):
     for line in string.splitlines():
         line = line.split(' ')
         print(line)
+    return string
 
 class Article:
-    def __init__(self, string, brand):
+    def __init__(self, line, brand):
         """
 
         Définit les propriétés d'un article à partir d'une ligne de la
-        facture que le parsing a déjà permis de récupérer dans "string":
+        facture que le parsing a déjà permis de récupérer dans "line":
         self.brand = la marque (string)
         self.sernumber = le code-article présent sur la facture (string)
         self.name = le nom de l'article affiché sur la facture (string)
@@ -64,7 +72,7 @@ class Article:
         self.price = le prix unité (float)
         self.TVA = la taux de TVA (%) (float)
 
-        Pour Carrefour un string typique ressemble à :
+        Pour Carrefour un line typique ressemble à :
         ['7613032779566', 'Céréales', '', 'CHOCAPIC', '2', '9.224.612', '5.5']
         s[0] est le code barres, s[-1] la TVA, s[-2] regroupe le prix
         total (9.22), le prix unité (4.61), la quantité commandée (2).
@@ -72,7 +80,15 @@ class Article:
         Le reste est le nom de l'article.
         Subtilité : des remises peuvent s'insérer entre le 9.22 et le 4.61
 
-        Pour Picard un string typique ressemble à :
+        Pour Auchan un line typique ressemble à :
+        ['5038862366502', 'Innocent', '3', '3.12', '', '9.36', '5.50', '9.87']
+        s[0] est le code barres, s[-1] est le prix total TTC, s[-2] la TVA,
+        s[-3] le prix total HT, s[-4] les remises éventuelles, s[-5] le prix
+        unitaire HT, s[-6] la quantité livrée
+        Subtilité (traitée en amont) : certains noms d'articles sont longs, et
+        sont sur plusieurs lignes voire pages.
+
+        Pour Picard un line typique ressemble à :
         ['012949', '300G', 'GIROLLES', '2', '7,95', '€', '15,90', '€', '5,50%']
         ou ['082109', '2', 'VACHERIN', 'VANILLE/FRAMB', '1', 'OFFERT']
         s[0] est le code barres, s[-1] la TVA, s[-3] le prix total, s[-5] le
@@ -93,31 +109,39 @@ class Article:
         """
         self.brand = brand
         if brand == "carrefour":
-            if len(string[0]) != 13:
+            if len(line[0]) != 13:
                 raise ValueError
-            self.sernumber = string[0]
-            self.name = " ".join(string[1:-3])
-            self.qty = int(string[-3])
-            stm2 = string[-2][string[-2].index('.')+3:]
-            if stm2.count('.') == 2: # Il y a une remise sur cet article
+            self.sernumber = line[0]
+            self.name = " ".join(line[1:-3])
+            self.qty = int(line[-3])
+            stm2 = line[-2][line[-2].index('.')+3:]
+            if stm2.count('.') == 2:  # Il y a une remise sur cet article
                 stm2 = stm2[stm2.index('.')+3:]
             self.price = float(stm2[:stm2.index('.')+3])
-            self.TVA = float(string[-1])
+            self.TVA = float(line[-1])
+        elif brand == "auchan":
+            if len(line[0]) != 13 or line[0] == "2007984000383":
+                raise ValueError #'2007984000383' est le frais de livraison
+            self.sernumber = line[0]
+            self.name = " ".join(line[1:-6])
+            self.qty = int(line[-6])
+            self.TVA = float(line[-2])
+            self.price = round(float(line[-5]) * (1. + self.TVA*0.01), 2)
         elif brand == "picard":
-            if len(string[0]) != 6:
+            if len(line[0]) != 6:
                 raise ValueError
-            self.sernumber = string[0]
-            if string[-1] == "OFFERT":
-                string[-1:] = ["0,00", "€", "0,00", "€", "0,00%"]
-            if string[-2] != "€" or string[-4] != "€":
+            self.sernumber = line[0]
+            if line[-1] == "OFFERT":
+                line[-1:] = ["0,00", "€", "0,00", "€", "0,00%"]
+            if line[-2] != "€" or line[-4] != "€":
                 raise ValueError
-            self.name = " ".join(string[1:-6])
-            if ',' in string[-6]:
-                self.qty = float(string[-6].replace(',', '.'))
+            self.name = " ".join(line[1:-6])
+            if ',' in line[-6]:
+                self.qty = float(line[-6].replace(',', '.'))
             else:
-                self.qty = int(string[-6])
-            self.price = float(string[-5].replace(',', '.'))
-            self.TVA = float(string[-1][:-1].replace(',', '.'))
+                self.qty = int(line[-6])
+            self.price = float(line[-5].replace(',', '.'))
+            self.TVA = float(line[-1][:-1].replace(',', '.'))
         else:
             raise NotImplementedError(brand)
 
@@ -146,24 +170,40 @@ def get_from_file(filename):
     except:
         raise NotImplementedError("")
     articles = []
-    for line in string.splitlines():
-        line = line.split(' ')
-        try:
-            articles.append(Article(line, brand))
-        except (ValueError, IndexError) as e:
-            pass
+    lines = string.splitlines()
+    i=0
+    while i<len(lines):
+        line = lines[i].split(' ')
+        if line and line[0].isdigit() and len(line[0]) == codelength[brand]:
+            if i+1 < len(lines) and lines[i+1].split(' ') != ['']:
+                #  Certains articles sont sur plusieurs lignes
+                while i+1 < len(lines) and lines[i+1].split(' ') != ['']:
+                    i += 1
+                    line.extend(lines[i].split(' '))
+                    #  Je ne garantis donc pas l'exactitude du nom pour Auchan
+                    #  Ces fdp peuvent écrire des articles sur 2 pages
+                i += 2 #  Mdr à ce stade faut pas chercher pourquoi
+                if i >= len(lines):
+                    break
+                line.extend(lines[i].split(' '))
+            print(line)
+            try:
+                articles.append(Article(line, brand))
+            except (ValueError, IndexError) as e:
+                pass
+        i += 1
     return date, brand, articles
 
-## Assistance à l'appro, utilisée si appro = True
+### Assistance à l'appro, utilisée si appro = True
 
-def preparation(qty = 0):
+def preparation(qty=0):
     # Afficher "Début dans 3...2...1..."
     print()
     if qty == 1:
         print("Les quantités sont maintenant toutes 1. Ca va aller plus vite.")
     print("Début dans ", end="", flush=True)
     for i in range(12):
-        print(3-i//4 if i%4 == 0 else ".", end="", flush=True)
+        print(3-i//4 if i % 4 == 0 else ".", end="", flush=True)
         sleep(0.25)
     print()
 
@@ -188,7 +228,7 @@ class KBHit:
         if os.name == 'nt':
             return msvcrt.kbhit()
         else:
-            dr,dw,de = select([sys.stdin], [], [], 0)
+            dr, dw, de = select([sys.stdin], [], [], 0)
             return dr != []
 
 def let_user_pause(timeout):
@@ -197,8 +237,8 @@ def let_user_pause(timeout):
     while time() - t0 < timeout:
         if kb.kbhit():
             print("\nScript mis en pause. Appuyer sur Entrer pour le poursuivre.")
-            sleep(3) # Ignorer les éventuelles fausses manips pendant 3s
-            msg = input() # Attendre Entrer pour la fin de la pause
+            sleep(3)  # Ignorer les éventuelles fausses manips pendant 3s
+            msg = input()  # Attendre Entrer pour la fin de la pause
             return True, msg
     return False, ""
 
@@ -219,7 +259,7 @@ def show_and_copy(article):
     if paused:
         preparation()
 
-## Lecture de la facture parsée, mise à jour des prix, compte-rendu
+### Lecture de la facture parsée, mise à jour des prix, compte-rendu
 
 def group_by_sernum(articles):
     # Plusieurs articles d'une facture peuvent concerner un même aliment
@@ -252,15 +292,15 @@ def update_prices(parsedfile):
         pass
 
     # Scanner tous les articles, les confronter avec la base de données
-    appro_started = False # Sert à n'utiliser preparation() qu'au début
-    unique_started = False # Sert à l'utiliser juste une 2e fois avant les 1
+    appro_started = False  # Sert à n'utiliser preparation() qu'au début
+    unique_started = False  # Sert à l'utiliser juste une 2e fois avant les 1
     newarticles = []
     newprices = []
     articles = group_by_sernum(articles)
-    articles.sort(key=lambda a:100 if a.qty%1 else a.qty, reverse=True)
+    articles.sort(key=lambda a: 100 if a.qty % 1 else a.qty, reverse=True)
     for article in articles:
         if article.qty == 0:
-            break # C'est trié décroissant donc y aura plus que des 0
+            break  # C'est trié décroissant donc y aura plus que des 0
         if article.sernumber in prices:
             former_price = prices[article.sernumber]
             if appro and article.sernumber not in hidden:
@@ -286,7 +326,7 @@ def update_prices(parsedfile):
             for (former_price, article) in newprices:
                 print(f"{article.name} : évolution de {former_price} à {article.price}")
                 cr.write(f"{article.name} : évolution de {former_price} à {article.price}\n")
-        if appro: # ... et lister les nouveaux articles
+        if appro:  # ... et lister les nouveaux articles
             if newarticles:
                 print("\nNouveaux articles :")
             for article in newarticles:
@@ -297,11 +337,11 @@ def update_prices(parsedfile):
         lines = []
         for key, value in prices.items():
             lines.append(f"{1*(key in hidden)} {key} {value} {names[key]}\n")
-        lines.sort(key=lambda string: string[2:]) #ça sert qu'à aider le débug
+        lines.sort(key=lambda st: st[2:])  # ça sert qu'à aider le débug
         for line in lines:
             newfile.write(line)
 
-## Recueil des arguments donnés dans le shell, gestion des erreurs
+### Recueil des arguments donnés dans le shell, gestion des erreurs
 
 if __name__ == "__main__":
     def main():
