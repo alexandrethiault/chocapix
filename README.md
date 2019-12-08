@@ -3,7 +3,7 @@
 # Qu'est-ce que c'est
 
 Le script présenté ici a deux fonctions :
-1) Suivre l'évolution des prix de supermarché au moment du loggage d'une nouvelle appro en créant un fichier récapitulant ces changements, de façon à permettre au respo appro de rentrer tous ces changements dans Chocapix en temps proportionnel au nombre de ces changements, et de façon à pouvoir informer la section de ces changements de prix sans que le respo appro n'ait à y consacrer plus de temps et d'énergie.
+1) Suivre l'évolution des prix de supermarché au moment du loggage d'une nouvelle appro en créant un fichier récapitulant ces changements, de façon à pouvoir informer la section de ces changements de prix sans que le respo appro n'ait à y consacrer son temps et son énergie.
 2) De manière plus générale, optimiser la productivité du respo appro dans le loggage pour accélérer cette opération fastidieuse et répétitive, en lui retirant la charge de la plupart des actions qu'il a toujours dû faire pour logguer une appro (allers-retours de la souris entre facture et Chocapix, interruptions régulières par les nouveaux aliments qui mettent plus de temps à logguer, vérification au cas par cas des changements de prix des aliments). Cette fonctionnalité est pensée et optimisée pour les utilisateurs de souris, mais même sans souris un gain de temps presque aussi important est possible. L'objectif est de faire tomber le temps du loggage des appros à environ 5 minutes. Ce script se présente donc comme concurrent et alternative au loggage avec scanner de code-barres.
 
 Toutefois, ce script n'a pas pour vocation :
