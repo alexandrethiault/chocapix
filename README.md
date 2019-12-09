@@ -49,7 +49,7 @@ A part pour le premier caractère de chaque ligne, ces fichiers ne doivent pas �
 
 _Dans des versions précédentes, il fallait lancer la commande une fois pour chaque ancienne facture et veiller à faire cela dans l'ordre chronologique des factures. Il fallait aussi fournir en argument le nom du supermarché d'où venait chaque facture. Aujourd'hui, le script détecte tout seul la marque et la date, c'est pourquoi il suffit de tout mettre dans un dossier "archive". Le script triera tout seul les factures par date pour avoir dans la base de données finale les prix les plus actuels de chaque aliment._
 
-# Utilisation pour une appro
+# Utilisation pour une appro sans scanner
 
 Lire toute la section avant de commencer à effectuer les opérations décrites.
 
@@ -128,6 +128,16 @@ Enfin, le script affiche dans l'invite de commande la liste des nouveaux article
 C'est terminé. L'invite de commande peut être fermé. A l'issue de l'appro, un compte-rendu au format .txt est créé, listant tous les changements de prix, y compris des articles non loggables. Il n'y a aucun danger à modifier ou supprimer ce compte-rendu, sa vocation est purement informative. Le respo news peut par exemple recopier les changements importants dans l'onglet des nouvelles par le respo news afin d'informer les membres de sa section sur les bonnes ou mauvaises surprises qui peuvent les attendre en loggant leurs aliments préférés.
 
 Il est à noter que des articles inconnus de Chocapix peuvent être donnés par le script lors de la première phase, au milieu des articles déjà rencontrés. Cela arrivera pour les produits d'entretien ou autres aliments qui ne se logguent pas, que les respos appro n'ont jamais fait connaître à Chocapix, mais que le script a quand même ajouté à sa base de données. Vous pouvez simplement ignorer la ligne et attendre la suivante. Mais alors cet article sera encore donné par le script la prochaine fois qu'il sera acheté. Pour ne plus jamais le voir, deux solutions. Soit à la fin de l'appro vous cherchez l'article dans la base de données (prix_marque.txt) et vous remplacez le 0 au début de sa ligne par un 1. Soit vous mettez en pause le script, et avant d'appuyer sur Entrer pour mettre fin à la pause, vous écrivez "whitelist xxx" où xxx est le code (ou à défaut, le nom complet) de l'aliment à ne jamais logguer.
+
+# Utilisation pour une appro avec scanner
+
+Dans le cas de Carrefour, Auchan et Picard, qui font figurer un code devant chaque article sur leurs factures, il est plus rapide de ne pas utiliser le scanner du tout et donc de se rapporter exclusivement à la section précédente. En revanche pour Cora, le fait de devoir passer un temps supplémentaire pour chaque article à choisir parmi les suggestions de noms que Chocapix fait au moment où on tape un nom dans la barre d'aliments peut potentiellement rendre l'utilisation du scanner préférable, si ces suggestions sont vraiment différentes des noms des aliments sur la facture. Dans ce cas la meilleure chose à faire est de scanner les code-barres de tous les articles livrés sans regarder si les prix ont changé, puis une fois que c'est fini, ouvrir un invite de commande et si la facture s'appelle "facture.pdf", taper :
+
+python be.py facture.pdf
+
+C'est à dire la même chose qu'à la section précédente mais sans le mot-clé "appro". Si un message contenant "[MainThread  ] [WARNI]  Failed to see startup log message; retrying..." s'affiche, l'ignorer.
+
+Dans l'invite de commande la liste de tous les articles dont le prix a changé va s'afficher, avec le détail avant/après de ces changements. Un fichier .txt a aussi été créé avec un nom du type "compte-rendu_marque_date.txt" où ces mêmes changements sont aussi listés. Le respo appro peut alors utiliser ce compte-rendu ou le texte affiché dans l'invite de commande pour mettre à jour les prix dans Chocapix. Il n'y a aucun danger à modifier ou supprimer ce compte-rendu, sa vocation est purement informative. Le respo news peut par exemple recopier les changements importants dans l'onglet des nouvelles par le respo news afin d'informer les membres de sa section sur les bonnes ou mauvaises surprises qui peuvent les attendre en loggant leurs aliments préférés.
 
 # Utilisation non attendue du script
 Plusieurs utilisations qui ne rentrent dans aucun des deux cadres cités plus haut (mise à niveau avec l'archive, et appro) peuvent être faites de ce script. Fidèle à la philisophie de Python, "we are all consenting adults here", la plupart de ces cas de figure ne mènent pas à une erreur et peuvent être explorés par un utilisateur curieux. En voici quelques exemples.
