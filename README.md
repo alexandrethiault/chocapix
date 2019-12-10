@@ -8,13 +8,20 @@ Le script présenté ici a deux fonctions :
 
 Toutefois, ce script n'a pas pour vocation :
 1) De remplacer le respo appro. Le script n'est pas capable d'effectuer tout seul l'appro, certaines actions restent à la charge du respo appro.
-2) D'aider dans les inventaires. Cette tâche n'a rien à voir avec ce qui est pris en charge par ce script.
+2) De faciliter le changement d'approvisionneur pour une section. Le logguage des nouveaux aliments, qui requiert la création de nouvelles fiches d'aliments, fait partie de ces actions qui restent à la charge du respo appro, et contre lesquelles le script n'est d'aucune aide
+3) D'aider dans les inventaires, les achat d'appro, ou toute autre chose en lien avec le BE qui n'est pas le loggage de l'appro. Ce script est tout simplement dédié uniquement au loggage des appros.
 
 # Prérequis
 
 Le script a été testé avec succès sur Windows 10, MacOS, Ubuntu, et un WSL Ubuntu. Rien n'est garanti pour d'autres systèmes d'exploitation.
 
 Pour logguer une appro avec ce script il faut au préalable avoir la facture PDF originale (pas un scan) et un interpréteur Python 3.6 ou plus récent. Il sera aussi utile d'avoir le plus de factures possible venant des anciennes appros. Renommer éventuellement les factures pour qu'il n'y ait pas d'espaces dans leurs noms. Télécharger le fichier be.py et le ranger dans un dossier qui contiendra aussi les factures. Créer un sous-dossier, l'appeler "archive", et y ranger toutes les factures qui ont déjà été logguées par le passé.
+
+Pour l'instant les approvisionneurs suivants sont pris en charge :
+- Carrefour
+- Auchan
+- Picard
+- Cora (leurs factures, pas les récapitulatifs de commande).
 
 Il faudra éventuellement installer les modules Python suivants, s'ils provoquent des erreurs d'imports : time, tika, sys et pyperclip ; sur Windows seulement : msvcrt ; sur les autres OS seulement : termios, atexit et select
   
@@ -161,4 +168,5 @@ Appuyer sur Ctrl+C dans l'invite de commande arrête totalement le script. Mais 
 - Not Implemented Error: Pyperclip could not find a copy/paste mechanism for your system. Ce problème rencontré sous Ubuntu a été résolu en installant un mécanisme de copier/coller. Pour plus de détails, voir https://pyperclip.readthedocs.io/en/latest/introduction.html#not-implemented-error
 
 # Fonctionnalités à venir
-- Prise en charge de Intermarché ?
+- Prise en charge de Intermarché (?)
+- Prise en charge des récapitulatifs de commande de Cora
