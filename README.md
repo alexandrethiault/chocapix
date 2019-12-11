@@ -164,9 +164,12 @@ Attention à ne pas renommer le dossier "archive" en autre chose et espérer que
 Appuyer sur Ctrl+C dans l'invite de commande arrête totalement le script. Mais comme les changements de prix ne sont enregistrés dans une base de donnée qu'au dernier moment à la fin de l'exécution du script, ces changements ne seront pas encore enregistrés au moment du Ctrl+C fautif. Il n'est donc pas primordial de finir sur le champ le loggage de l'appro quand il a été commencé. De même, si Chocapix plante en plein milieu de l'appro, on peut sans crainte relancer le script après un Ctrl+C, les changements de prix seront encore signalés et les nouveaux articles seront encore considérés nouveaux. L'arrêt par Ctrl+C ne se produit que si aucun texte n'est sélectionné : cela ne concerne donc pas le fait de copier manuellement un nombre pendant une pause du script.
 
 # Quelques messages d'erreur exotiques
-- RuntimeError: Unable to start Tika server. (après un traceback et un message d'erreur contenant Unable to run java; is it installed?) Ce problème rencontré avec un WSL Ubuntu a été résolu en installant Java. Pour plus de détails, voir https://stackoverflow.com/questions/36478741/installing-oracle-jdk-on-windows-subsystem-for-linux
-- Not Implemented Error: Pyperclip could not find a copy/paste mechanism for your system. Ce problème rencontré sous Ubuntu a été résolu en installant un mécanisme de copier/coller. Pour plus de détails, voir https://pyperclip.readthedocs.io/en/latest/introduction.html#not-implemented-error
+- RuntimeError: Unable to start Tika server. (après un traceback et un message d'erreur contenant Unable to run java; is it installed?) Ce problème rencontré avec un WSL Ubuntu a été résolu en installant Java. Pour plus de détails, voir https://stackoverflow.com/questions/36478741/installing-oracle-jdk-on-windows-subsystem-for-linux. Sur un Windows 10 où le même problème a été rencontré et où Java était déjà installé, la solution était d'ajouter le dossier bin de Java au PATH.
+- Not Implemented Error: Pyperclip could not find a copy/paste mechanism for your system. Ce problème rencontré sous Ubuntu a été résolu en installant un mécanisme de copier/coller. Pour plus de détails, voir https://pyperclip.readthedocs.io/en/latest/introduction.html#not-implemented-error.
+- AttributeError: 'bytes' object has no attribute 'close'. Ce problème rencontré avec Windows 10 a été résolu en cherchant directement la ligne du module tika pointée par le message d'erreur complet, et en la supprimant. Il s'agit d'une erreur du côté de tika qui a été corrigée depuis. Pour plus de détails, voir https://github.com/chrismattmann/tika-python/pull/253/files.
 
 # Fonctionnalités à venir
 - Prise en charge de Intermarché (?)
 - Prise en charge des récapitulatifs de commande de Cora
+- Prise en charge de Houra
+- Prise ne charge des récapitulatifs de commande de Carrefour (?)
