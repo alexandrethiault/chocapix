@@ -54,7 +54,7 @@ finddate = {
 
 #  Indicateur (pas forcément 100% fiable) qu'un article commence à cette ligne
 def article_with_code(length, line):
-    return len(line)>length and line[:length].isdigit() and line[length] == " "
+    return len(line) >= length and line[:length].isdigit()
 
 def article_cora(line):
     if not line: return False
@@ -69,7 +69,7 @@ is_article = {
     "carrefour": (lambda line: article_with_code(13, line)),
     "auchan": (lambda line: article_with_code(13, line)),
     "cora": article_cora,
-    "houra": (lambda line: " " in line and line[:line.index(" ")].isdigit()),
+    "houra": (lambda line: line.isdigit() or " " in line and line[:line.index(" ")].isdigit()),
     "picard": (lambda line: article_with_code(6, line))
 }
 
