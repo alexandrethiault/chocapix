@@ -30,7 +30,7 @@ def paste_time(quantity):
     else:  # > 5 mais aussi nombres à virgule (légumes vendus au poids...)
         return time_max
 
-brands = ["carrefour", "auchan", "cora", "picard"]
+brands = ["carrefour", "auchan", "cora", "houra", "picard"]
 
 ### Parsing
 
@@ -39,6 +39,7 @@ keyword = {
     "carrefour": "OOSHOP",
     "auchan": "Auchan Direct",
     "cora": "coradrive",
+    "houra": "client@houra.fr",
     "picard": "SIRET : 78493968805071"
 }
 
@@ -47,6 +48,7 @@ finddate = {
     "carrefour": (lambda s: s[s.find("Date de commande : ")+19:s.find("Date de commande : ")+29]),
     "auchan": (lambda s: s[s.find("FACTURE N° ")+32:s.find("FACTURE N° ")+42]),
     "cora": (lambda s: s[s.find(", le ")+5:s.find(", le ")+15]),
+    "houra": (lambda s: s[s.find("Réf. ")-12:s.find("Réf. ")-2]),
     "picard": (lambda s: s[s.find("DATE : ")+7:s.find("DATE : ")+17])
 }
 
@@ -67,6 +69,7 @@ is_article = {
     "carrefour": (lambda line: article_with_code(13, line)),
     "auchan": (lambda line: article_with_code(13, line)),
     "cora": article_cora,
+    "houra": (lambda line: " " in line and line[:line.index(" ")].isdigit()),
     "picard": (lambda line: article_with_code(6, line))
 }
 
@@ -104,20 +107,18 @@ class Article:
         ['5038862366502', 'Innocent', '3', '3.12', '', '9.36', '5.50', '9.87']
         s[0] est le code barres, s[-1] est le prix total TTC, s[-2] la TVA,
         s[-3] le prix total HT, s[-4] les remises éventuelles, s[-5] le prix
-        unitaire HT, s[-6] la quantité livrée
-        Subtilité (traitée en amont) : certains noms d'articles sont longs, et
-        sont sur plusieurs lignes voire pages.
+        unitaire HT, s[-6] la quantité livrée.
 
         Pour Cora un line typique ressemble à :
         ['Cora', 'camembert', 'au', 'lait', 'pasteurisé', '250', 'g', '1.32', '€', '3', '3', '3.75', '€', '3.96', '€']
         ou
         ['Citron', 'jaune', '(Origine:', 'Espagne)', '740g', 'à', '2.89', '€/kg', '1.99', '€', '1', '3', '1.89', '€', '1.99', '€']
+        s[-5] est un code TVA (3 pour 5.5%, 7 pour 20%)
 
         Pour Picard un line typique ressemble à :
         ['012949', '300G', 'GIROLLES', '2', '7,95', '€', '15,90', '€', '5,50%']
         ou ['082109', '2', 'VACHERIN', 'VANILLE/FRAMB', '1', 'OFFERT']
-        s[0] est le code barres, s[-1] la TVA, s[-3] le prix total, s[-5] le
-        prix unité, s[-6] la quantité sur la facture. Le milieu est le nom.
+        s[0] est un faux code-barres : écrire self.sernumber="-". Tout est TTC.
         Subtilité : certains articles sont offerts, ce qui affecte le parsing.
 
         Pour découvrir à quoi ressemblent ces lignes parsées pour un nouveau
@@ -134,8 +135,6 @@ class Article:
         """
         self.brand = brand
         if brand == "carrefour":
-            if len(line[0]) != 13:
-                raise ValueError
             self.sernumber = line[0]
             self.name = " ".join(line[1:-3])
             self.qty = int(line[-3])
@@ -146,7 +145,7 @@ class Article:
             self.TVA = float(line[-1])
             self.ref = self.sernumber
         elif brand == "auchan":
-            if len(line[0]) != 13 or line[0] == "2007984000383":
+            if line[0] == "2007984000383":
                 raise ValueError # '2007984000383' est le frais de livraison
             self.sernumber = line[0]
             self.name = " ".join(line[1:-6])
@@ -180,10 +179,20 @@ class Article:
                 self.price = float(line[-8 + shift])
                 self.qty = int(line[-6 + shift])
             self.ref = self.name
-        elif brand == "picard":
-            if len(line[0]) != 6:
-                raise ValueError
+        elif brand == "houra":
             self.sernumber = line[0]
+            if line[1] == "Echantillon" and line[2] == "Offert":
+                raise ValueError
+            self.name = " ".join(line[1:-5])
+            if ',' in line[-5]:
+                self.qty = float(line[-5].replace(',', '.'))
+            else:
+                self.qty = int(line[-5])
+            self.price = float(line[-2].replace(',', '.'))
+            self.TVA = float(line[-3].replace(',', '.'))
+            self.ref = self.sernumber
+        elif brand == "picard":
+            self.sernumber = "-"  # line[0]
             if line[-1] == "OFFERT":
                 line[-1:] = ["0,00", "€", "0,00", "€", "0,00%"]
             if line[-2] != "€" or line[-4] != "€":
@@ -195,7 +204,7 @@ class Article:
                 self.qty = int(line[-6])
             self.price = float(line[-5].replace(',', '.'))
             self.TVA = float(line[-1][:-1].replace(',', '.'))
-            self.ref = self.sernumber
+            self.ref = self.name
         else:
             raise NotImplementedError(brand)
 
