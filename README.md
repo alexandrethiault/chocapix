@@ -9,7 +9,7 @@ Le script présenté ici a deux fonctions :
 Toutefois, ce script n'a pas pour vocation :
 1) De remplacer le respo appro. Le script n'est pas capable d'effectuer tout seul l'appro, certaines actions restent à la charge du respo appro.
 2) De faciliter le changement d'approvisionneur pour une section. Le logguage des nouveaux aliments, qui requiert la création de nouvelles fiches d'aliments, fait partie de ces actions qui restent à la charge du respo appro, et contre lesquelles le script n'est d'aucune aide
-3) D'aider dans les inventaires, les achat d'appro, ou toute autre chose en lien avec le BE qui n'est pas le loggage de l'appro. Ce script est tout simplement dédié uniquement au loggage des appros.
+3) D'aider dans les inventaires, et en particulier la vérification que les quantités livrées sont bien les quantités écrites sur les factures. Ce script est tout simplement dédié uniquement au loggage des appros, et vouloir faire l'inventaire en même temps que l'appro va contre le principe de ce script, qui veut séparer ces deux tâches.
 
 # Prérequis
 
@@ -21,7 +21,8 @@ Pour l'instant les approvisionneurs suivants sont pris en charge :
 - Carrefour
 - Auchan
 - Picard
-- Cora (leurs factures, pas les récapitulatifs de commande).
+- Cora (factures)
+- Cora (récapitulatifs de commande)
 - Houra
 
 Il faudra éventuellement installer les modules Python suivants, s'ils provoquent des erreurs d'imports : time, tika, sys et pyperclip ; sur Windows seulement : msvcrt ; sur les autres OS seulement : termios, atexit et select
@@ -125,7 +126,7 @@ Pour changer ces temps de manière ponctuelle pour une seule appro, on pourra à
 
 python be.py 06.11_facture.pdf appro set_pause a b c d
 
-Où a b c et d (entiers ou à virgule) remplaceront respectivement 1,25, 3, 0,5 et 5. Choisissez les temps idéaux pour terminer l'appro le plus rapidement possible sans avoir à pauser trop souvent le script. Sans souris, le mieux est d'utiliser les raccourcis clavier (shift et ctrl+shift pour passer de la case code-barres à la case quantité). Pour les utilisateurs de pavé tactile, l'expérience montre que "set_pause 1,25 4 0,25 5" est plus adapté. Dans le cas des factures sans code-barres (comme celles de Cora ou Intermarché), comme c'est le nom qui sera collé dans la barre d'aliment de Chocapix et qu'il peut y avoir des différences avec le nom connu par Chocapix, qui va proposer une liste de suggestions, il faut se réserver un temps supplémentaire à chaque article pour choisir la bonne suggestion et cliquer dessus. Cela n'a pas encore été testé mais "set_pause 2.5 5 0,25 7" semble plus adapté.
+Où a b c et d (entiers ou à virgule) remplaceront respectivement 1,25, 3, 0,5 et 5. Choisissez les temps idéaux pour terminer l'appro le plus rapidement possible sans avoir à pauser trop souvent le script. Sans souris, le mieux est d'utiliser les raccourcis clavier (shift et ctrl+shift pour passer de la case code-barres à la case quantité). Pour les utilisateurs de pavé tactile, l'expérience montre que "set_pause 1,25 4 0,25 5" est plus adapté. Dans le cas des factures sans code-barres (comme celles de Cora ou Intermarché), comme c'est le nom qui sera collé dans la barre d'aliment de Chocapix et qu'il peut y avoir des différences avec le nom connu par Chocapix, qui va proposer une liste de suggestions, il faut se réserver un temps supplémentaire à chaque article pour choisir la bonne suggestion et cliquer dessus. Cela n'a pas encore été testé mais "set_pause 2.5 5 0,25 7" semble plus raisonnable.
 
 _Ces paramètres peuvent aussi être changés définitivement en modifiant le code du fichier Python : les valeurs y sont définies dans les premières lignes après les imports de modules._
 
@@ -145,7 +146,7 @@ python be.py facture.pdf
 
 C'est à dire la même chose qu'à la section précédente mais sans le mot-clé "appro". Si un message contenant "[MainThread  ] [WARNI]  Failed to see startup log message; retrying..." s'affiche, l'ignorer.
 
-Dans l'invite de commande la liste de tous les articles dont le prix a changé va s'afficher, avec le détail avant/après de ces changements. Un fichier .txt a aussi été créé avec un nom du type "compte-rendu_marque_date.txt" où ces mêmes changements sont aussi listés. Le respo appro peut alors utiliser ce compte-rendu ou le texte affiché dans l'invite de commande pour mettre à jour les prix dans Chocapix. Il n'y a aucun danger à modifier ou supprimer ce compte-rendu, sa vocation est purement informative. Le respo news peut par exemple recopier les changements importants dans l'onglet des nouvelles afin d'informer les membres de sa section sur les bonnes ou mauvaises surprises qui peuvent les attendre en loggant leurs aliments préférés.
+Un fichier .txt est créé avec un nom du type "compte-rendu_marque_date.txt" où sont listés tous les articles dont le prix a changé, avec le détail avant/après de ces changements. Le respo appro peut alors utiliser ce compte-rendu pour mettre à jour les prix dans Chocapix. Après cela, il n'y a aucun danger à modifier ou supprimer ce compte-rendu, sa vocation devient purement informative. Le respo news peut par exemple recopier les changements importants dans l'onglet des nouvelles afin d'informer les membres de sa section sur les bonnes ou mauvaises surprises qui peuvent les attendre en loggant leurs aliments préférés.
 
 # Utilisation non attendue du script
 Plusieurs utilisations qui ne rentrent dans aucun des deux cadres cités plus haut (mise à niveau avec l'archive, et appro) peuvent être faites de ce script. Fidèle à la philisophie de Python, "we are all consenting adults here", la plupart de ces cas de figure ne mènent pas à une erreur et peuvent être explorés par un utilisateur curieux. En voici quelques exemples.
@@ -171,5 +172,4 @@ Appuyer sur Ctrl+C dans l'invite de commande arrête totalement le script. Mais 
 
 # Fonctionnalités à venir
 - Prise en charge de Intermarché (?)
-- Prise en charge des récapitulatifs de commande de Cora
 - Prise ne charge des récapitulatifs de commande de Carrefour (?)
