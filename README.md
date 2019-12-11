@@ -22,6 +22,7 @@ Pour l'instant les approvisionneurs suivants sont pris en charge :
 - Auchan
 - Picard
 - Cora (leurs factures, pas les récapitulatifs de commande).
+- Houra
 
 Il faudra éventuellement installer les modules Python suivants, s'ils provoquent des erreurs d'imports : time, tika, sys et pyperclip ; sur Windows seulement : msvcrt ; sur les autres OS seulement : termios, atexit et select
   
@@ -171,5 +172,4 @@ Appuyer sur Ctrl+C dans l'invite de commande arrête totalement le script. Mais 
 # Fonctionnalités à venir
 - Prise en charge de Intermarché (?)
 - Prise en charge des récapitulatifs de commande de Cora
-- Prise en charge de Houra
 - Prise ne charge des récapitulatifs de commande de Carrefour (?)
