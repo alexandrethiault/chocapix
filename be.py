@@ -30,7 +30,7 @@ def paste_time(quantity):
     else:  # > 5 mais aussi nombres à virgule (légumes vendus au poids...)
         return time_max
 
-brands = ["carrefour", "auchan", "cora", "houra", "picard"]
+brands = ["carrefour", "auchan", "cora_f", "cora_r", "houra", "picard"]
 
 ### Parsing
 
@@ -38,7 +38,8 @@ brands = ["carrefour", "auchan", "cora", "houra", "picard"]
 keyword = {
     "carrefour": "OOSHOP",
     "auchan": "Auchan Direct",
-    "cora": "coradrive",
+    "cora_f": "Facture coradrive",
+    "cora_r": "Récapitulatif de commande coradrive",
     "houra": "client@houra.fr",
     "picard": "SIRET : 78493968805071"
 }
@@ -47,7 +48,8 @@ keyword = {
 finddate = {
     "carrefour": (lambda s: s[s.find("Date de commande : ")+19:s.find("Date de commande : ")+29]),
     "auchan": (lambda s: s[s.find("FACTURE N° ")+32:s.find("FACTURE N° ")+42]),
-    "cora": (lambda s: s[s.find(", le ")+5:s.find(", le ")+15]),
+    "cora_f": (lambda s: s[s.find(", le ")+5:s.find(", le ")+15]),
+    "cora_r": (lambda s: s[s.find("Livraison ")+13:s.find("Livraison ")+23]),
     "houra": (lambda s: s[s.find("Réf. ")-12:s.find("Réf. ")-2]),
     "picard": (lambda s: s[s.find("DATE : ")+7:s.find("DATE : ")+17])
 }
@@ -56,7 +58,7 @@ finddate = {
 def article_with_code(length, line):
     return len(line) >= length and line[:length].isdigit()
 
-def article_cora(line):
+def article_cora_f(line):
     if not line: return False
     if "Frais de " in line: return False
     if "Code TVA" in line: return False
@@ -65,10 +67,18 @@ def article_cora(line):
     if "Cora - Siège Social" in line: return False
     return True
 
+def article_cora_r(line):
+    if not line: return False
+    if "Qté Remise Total TTC" in line: return False
+    if "Récapitulatif" in line: return False
+    if "Total articles :" in line: return False
+    return article_cora_f(line)
+
 is_article = {
     "carrefour": (lambda line: article_with_code(13, line)),
     "auchan": (lambda line: article_with_code(13, line)),
-    "cora": article_cora,
+    "cora_f": article_cora_f,
+    "cora_r": article_cora_r,
     "houra": (lambda line: line.isdigit() or " " in line and line[:line.index(" ")].isdigit()),
     "picard": (lambda line: article_with_code(6, line))
 }
@@ -111,7 +121,7 @@ class Article:
 
         Pour Cora un line typique ressemble à :
         ['Cora', 'camembert', 'au', 'lait', 'pasteurisé', '250', 'g', '1.32', '€', '3', '3', '3.75', '€', '3.96', '€']
-        ou
+        ou pour les articles qui ont un prix au poids :
         ['Citron', 'jaune', '(Origine:', 'Espagne)', '740g', 'à', '2.89', '€/kg', '1.99', '€', '1', '3', '1.89', '€', '1.99', '€']
         s[-5] est un code TVA (3 pour 5.5%, 7 pour 20%)
 
@@ -153,7 +163,7 @@ class Article:
             self.TVA = float(line[-2])
             self.price = round(float(line[-5]) * (1. + self.TVA*0.01), 2)
             self.ref = self.sernumber
-        elif brand == "cora":
+        elif brand == "cora_f":
             if line[-1] != "€" or line[-3] != "€":
                 raise ValueError
             self.sernumber = "-"
@@ -178,6 +188,27 @@ class Article:
                 self.name = " ".join(line[:-8 + shift])
                 self.price = float(line[-8 + shift])
                 self.qty = int(line[-6 + shift])
+            self.ref = self.name
+        elif brand == "cora_r":
+            shift = -2 if line[-6] == "€" else 0 # remise
+            if line[-1] != "€" or line[-4 + shift] != "€":
+                raise ValueError
+            self.sernumber = "-"
+            if "€/kg" in line:
+                i = line.index("€/kg")
+                self.name = " ".join(line[:i-3])
+                self.price = float(line[i-1])
+                qty = line[i-3]
+                if "kg" in qty:
+                    self.qty = float(qty[:-2])
+                elif "g" in qty:
+                    self.qty = round(float(qty[:-1])*0.001, 3)
+                else:
+                    raise ValueError
+            else:
+                self.qty = int(line[-3 + shift])
+                self.price = float(line[-5 + shift])
+                self.name = " ".join(line[:-7 + shift])
             self.ref = self.name
         elif brand == "houra":
             self.sernumber = line[0]
@@ -234,26 +265,49 @@ def get_from_file(filename):
         raise NotImplementedError("")
     articles = []
     lines = string.splitlines()
-    i = 0
-    while i<len(lines):
-        if is_article[brand](lines[i]):
-            line = lines[i].split(' ')
-            if i+1 < len(lines) and lines[i+1].split(' ') != ['']:
-                # Certains articles sont sur plusieurs lignes
-                while i+1 < len(lines) and lines[i+1].split(' ') != ['']:
-                    i += 1
+    if brand in ["cora_r"]:
+        # Les articles sont sur des lignes consécutives. Si un article prend
+        # plusieurs lignes, il y a un saut de ligne avant et après les prix,
+        # sinon tout est sur une ligne et il n'y a pas de saut avant la suite.
+        phase_articles = False
+        i = 0
+        while i < len(lines):
+            if is_article[brand](lines[i]):
+                line = lines[i].split(' ')
+                if line[-1] != "€":
+                    while i+1 < len(lines) and lines[i+1].split(' ') != ['']:
+                        i += 1
+                        line.extend(lines[i].split(' '))
+                    i += 2 # Ca a l'air spécifique mais en fait non
+                    if i >= len(lines):
+                        break
                     line.extend(lines[i].split(' '))
-                    # Je ne garantis donc pas l'exactitude du nom pour Auchan
-                    # Ces fdp peuvent écrire des articles sur 2 pages
-                i += 2 # Ca a l'air spécifique mais en fait non
-                if i >= len(lines):
-                    break
-                line.extend(lines[i].split(' '))
-            try:
-                articles.append(Article(line, brand))
-            except (ValueError, IndexError) as e:
-                pass
-        i += 1
+                try:
+                    articles.append(Article(line, brand))
+                except (ValueError, IndexError) as e:
+                    pass
+            i += 1
+    else:
+        i = 0
+        while i < len(lines):
+            if is_article[brand](lines[i]):
+                line = lines[i].split(' ')
+                if i+1 < len(lines) and lines[i+1].split(' ') != ['']:
+                    # Certains articles sont sur plusieurs lignes
+                    while i+1 < len(lines) and lines[i+1].split(' ') != ['']:
+                        i += 1
+                        line.extend(lines[i].split(' '))
+                        # Je ne garantis pas l'exactitude du nom pour Auchan
+                        # Ces fdp peuvent écrire des articles sur 2 PAGES
+                    i += 2 # Ca a l'air spécifique mais en fait non
+                    if i >= len(lines):
+                        break
+                    line.extend(lines[i].split(' '))
+                try:
+                    articles.append(Article(line, brand))
+                except (ValueError, IndexError) as e:
+                    pass
+            i += 1
     return date, brand, articles
 
 ### Assistance à l'appro, utilisée si appro = True
