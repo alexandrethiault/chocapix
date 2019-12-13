@@ -37,6 +37,8 @@ Ou plus simplement, si votre interpréteur est anaconda, taper directement dans 
 
 Si cela ne marche pas, c'est probablement que la version utilisée de Python est antérieure à 3.4 ou que plusieurs versions de Python sont installées. Dans tous les cas, https://docs.python.org/3/installing/index.html est une ressource utile.
 
+Pour les utilisateurs de Windows les plus mal à l'aise avec les installations, une application (54Mo) directement exécutable sans rien télécharger d'autre est disponible ici : https://www.dropbox.com/sh/uijjftzdnatq0mr/AAAMyZztInBVFWI3gSPzEZ8ma?dl=0 (Mis à jour le 13/12/2019). En cas d'utilisation de ce script, il faudra remplacer dans le reste de ce mode d'emploi tous les "python be.py" par des "./be"
+
 L'exécution du script peut provoquer quelques bugs plus exotiques, certains sont décrits dans la dernière section du README.
 
 
