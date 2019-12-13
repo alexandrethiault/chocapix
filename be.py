@@ -3,34 +3,17 @@
 
 import os
 import sys
-import pyperclip
+import pyautogui
 
 from tika import parser
 from time import time, sleep
 
-if os.name == 'nt':
-    import msvcrt
-else:
-    import termios
-    import atexit
-    from select import select
-
 ### Variables globales
 
-time_1 = 1.25    # temps pour une quantité 1
-time_2 = 3       # temps pour une quantité 2
-time_more = 0.5  # temps supplémentaire pour chaque +1 en quantité
-time_max = 5     # temps max
-
-def paste_time(quantity):
-    if quantity == 1:
-        return time_1
-    elif quantity in [2, 3, 4, 5]:
-        return min(time_2 + (quantity-2) * time_more, time_max)
-    else:  # > 5 mais aussi nombres à virgule (légumes vendus au poids...)
-        return time_max
+pyautogui.PAUSE = 0.2  #0.05  # Temps entre chaque action du mode full auto
 
 brands = ["carrefour", "auchan", "cora_f", "cora_r", "houra", "picard"]
+fullauto = ["carrefour", "auchan"]
 
 ### Parsing
 
@@ -119,7 +102,7 @@ class Article:
         s[-3] le prix total HT, s[-4] les remises éventuelles, s[-5] le prix
         unitaire HT, s[-6] la quantité livrée.
 
-        Pour Cora un line typique ressemble à :
+        Pour Cora (factures) un line typique ressemble à :
         ['Cora', 'camembert', 'au', 'lait', 'pasteurisé', '250', 'g', '1.32', '€', '3', '3', '3.75', '€', '3.96', '€']
         ou pour les articles qui ont un prix au poids :
         ['Citron', 'jaune', '(Origine:', 'Espagne)', '740g', 'à', '2.89', '€/kg', '1.99', '€', '1', '3', '1.89', '€', '1.99', '€']
@@ -166,7 +149,6 @@ class Article:
         elif brand == "cora_f":
             if line[-1] != "€" or line[-3] != "€":
                 raise ValueError
-            self.sernumber = "-"
             TVAcode = line[-5]
             if TVAcode == "3":
                 self.TVA = 5.50
@@ -193,10 +175,9 @@ class Article:
             shift = -2 if line[-6] == "€" else 0 # remise
             if line[-1] != "€" or line[-4 + shift] != "€":
                 raise ValueError
-            self.sernumber = "-"
             if "€/kg" in line:
                 i = line.index("€/kg")
-                self.name = " ".join(line[:i-3])
+                self.name = " ".join([wrd for wrd in line[:i-3] if wrd])
                 self.price = float(line[i-1])
                 qty = line[i-3]
                 if "kg" in qty:
@@ -208,42 +189,46 @@ class Article:
             else:
                 self.qty = int(line[-3 + shift])
                 self.price = float(line[-5 + shift])
-                self.name = " ".join(line[:-7 + shift])
+                self.name = " ".join([wrd for wrd in line[:-7 + shift] if wrd])
             self.ref = self.name
         elif brand == "houra":
-            self.sernumber = line[0]
-            if line[1] == "Echantillon" and line[2] == "Offert":
+            if "Echantillon Offert" in " ".join(line):
                 raise ValueError
-            self.name = " ".join(line[1:-5])
+            # line[0] n'est pas le code-barres
+            self.name = " ".join([wrd for wrd in line[1:-5] if wrd])
             if ',' in line[-5]:
                 self.qty = float(line[-5].replace(',', '.'))
             else:
                 self.qty = int(line[-5])
             self.price = float(line[-2].replace(',', '.'))
             self.TVA = float(line[-3].replace(',', '.'))
-            self.ref = self.sernumber
+            self.ref = self.name
         elif brand == "picard":
-            self.sernumber = "-"  # line[0]
+            # line[0] n'est pas le code-barres
             if line[-1] == "OFFERT":
                 line[-1:] = ["0,00", "€", "0,00", "€", "0,00%"]
             if line[-2] != "€" or line[-4] != "€":
                 raise ValueError
-            self.name = " ".join(line[1:-6])
+            self.name = " ".join([wrd for wrd in line[1:-6] if wrd])
             if ',' in line[-6]:
                 self.qty = float(line[-6].replace(',', '.'))
             else:
                 self.qty = int(line[-6])
             self.price = float(line[-5].replace(',', '.'))
             self.TVA = float(line[-1][:-1].replace(',', '.'))
-            self.ref = self.name
         else:
             raise NotImplementedError(brand)
+        if brand in fullauto:
+            self.ref = self.sernumber
+        else:
+            self.sernumber = "-"
+            self.ref = self.name
 
     def __repr__(self):
         return f"{self.sernumber} {self.name} - Qté : {self.qty} - Prix : {self.price}"
 
 def stddate(jjmmaaaa):
-    # Récupérer une date qui s'ordonne bien (aaaammjj) à partir des jjmmaaaa
+    # Récupérer une date qui s'ordonne bien (aaaammjj) à partir de jj/mm/aaaa
     jj = jjmmaaaa[:2]
     mm = jjmmaaaa[3:5]
     aaaa = jjmmaaaa[6:]
@@ -310,71 +295,44 @@ def get_from_file(filename):
             i += 1
     return date, brand, articles
 
-### Assistance à l'appro, utilisée si appro = True
+### Affichages et prise de contrôle du clavier pour loguer, que si appro = True
 
-def preparation(qty=0):
-    # Afficher "Début dans 3...2...1..."
-    print()
-    if qty == 1:
-        print("Les quantités sont maintenant toutes 1. Ca va aller plus vite.")
-    print("Début dans ", end="", flush=True)
+def preparation():
+    # Prévenir du début imminent de l'appro
+    # Afficher dans l'invite de commande "Début dans 3...2...1..."
+    pyautogui.alert("A partir du moment où vous fermerez cette fenêtre, vous aurez 3 secondes pour cliquer dans la case du nom d'aliment dans le menu appro, et l'appro commencera.", "Début de l'appro")
+    print("\nDébut dans ", end="", flush=True)
     for i in range(12):
         print(3-i//4 if i % 4 == 0 else ".", end="", flush=True)
         sleep(0.25)
     print()
 
-class KBHit:
-    # https://gitlab.com/py_ren/pyren/blob/master/pyren/mod_utils.py
-    # De quoi réagir aux touches de clavier pendant l'exécution du script
-    def __init__(self):
-        if os.name == 'nt':
-            pass
-        else:
-            self.fd = sys.stdin.fileno()
-            self.new_term = termios.tcgetattr(self.fd)
-            self.old_term = termios.tcgetattr(self.fd)
-            self.new_term[3] = (self.new_term[3] & ~termios.ICANON & ~termios.ECHO)
-            termios.tcsetattr(self.fd, termios.TCSAFLUSH, self.new_term)
-            atexit.register(self.set_normal_term)
-
-    def set_normal_term(self):
-        termios.tcsetattr(self.fd, termios.TCSAFLUSH, self.old_term)
-
-    def kbhit(self):
-        if os.name == 'nt':
-            return msvcrt.kbhit()
-        else:
-            dr, dw, de = select([sys.stdin], [], [], 0)
-            return dr != []
-
-def let_user_pause(timeout):
-    # Cette fonction est un "input()" non-bloquant et avec un timeout
-    t0 = time()
-    while time() - t0 < timeout:
-        if kb.kbhit():
-            print("\nScript mis en pause. Appuyer sur Entrer pour le poursuivre.")
-            sleep(3)  # Ignorer les éventuelles fausses manips pendant 3s
-            msg = input()  # Attendre Entrer pour la fin de la pause
-            return True, msg[:200]  # au cas où user fait trop le malin
-    return False, ""
-
-def show_and_copy(article):
-    # Afficher un article dans l'invite de commande, copier son code sur le
-    # presse-papier, et détecter si l'utilisateur a voulu whitelister qqc
-    pyperclip.copy(article.ref)
-    if article.sernumber != "-":
+def show_and_log(article, pricechange=False):
+    # Afficher un article dans l'invite de commande, et en fullauto, le loguer
+    if article.brand in fullauto:
         print(f"{article.sernumber} - {article.qty}\t{article.name}")
+        pos = pyautogui.position()
+        pyautogui.typewrite(article.ref)
+        pyautogui.doubleClick()
+        pyautogui.press('return')
+        pyautogui.press('tab')
+        if pricechange:
+            pyautogui.press('tab')
+            pyautogui.typewrite(str(article.price).replace('.', ','))
+            pyautogui.hotkey('shift', 'tab')
+        pyautogui.typewrite(str(article.qty).replace('.', ','))
+        pyautogui.hotkey('shift', 'tab')
+        pyautogui.press('esc')
+        pyautogui.press('backspace')
+        if pyautogui.position() != pos:
+            msg = pyautogui.confirm(text="Pause invoquée par mouvement de la souris\nOK pour continuer l'exécution du script\nCancel pour l'interrompre définitivement.")
+            if msg == "OK":
+                sleep(0.5)
+                pyautogui.moveTo(pos[0], pos[1])
+            else:
+                raise KeyboardInterrupt
     else:
         print(f"{article.qty}\t{article.name}")
-    paused, msg = let_user_pause(paste_time(article.qty))
-    if "whitelist" in msg.lower():
-        to_whitelist = [msg[i:j] for i in range(len(msg)) for j in range(i+1, len(msg)+1)]
-        for ref in to_whitelist:
-            if ref in prices or ref == article.ref:
-                hidden.add(ref)
-                print(f"Article {ref} whitelisté avec succès")
-    if paused:
-        preparation()
 
 ### Lecture de la facture parsée, mise à jour des prix, compte-rendu
 
@@ -391,6 +349,9 @@ def group_by_sernum(articles):
 
 def update_prices(parsedfile):
     date, brand, articles = parsedfile
+    if brand[-2] == '_':  # "cora_f", "cora_r"...
+        brand = brand[:-2]
+
     # Récupérer les données de la base de données des prix si elle existe
     global prices, hidden
     codes = {}
@@ -413,27 +374,21 @@ def update_prices(parsedfile):
         pass
 
     # Scanner tous les articles, les confronter avec la base de données
-    appro_started = False  # Sert à n'utiliser preparation() qu'au début
-    unique_started = False  # Sert à l'utiliser juste une 2e fois avant les 1
+    if appro and brand in fullauto:
+        preparation(brand in fullauto)
     newarticles = []
     newprices = []
     articles = group_by_sernum(articles)
-    articles.sort(key=lambda a: 100 if a.qty % 1 else a.qty, reverse=True)
     for article in articles:
         if article.qty == 0:
-            break  # C'est trié décroissant donc y aura plus que des 0
+            continue
         if article.ref in prices:
-            former_price = prices[article.ref]
-            if appro and article.ref not in hidden:
-                if article.qty == 1 and not unique_started:
-                    unique_started = True
-                    preparation(1)
-                elif not appro_started:
-                    appro_started = True
-                    preparation()
-                show_and_copy(article)
-            if article.price != former_price:
-                newprices.append((former_price, article))
+            if article.ref not in hidden:
+                former_price = prices[article.ref]
+                if appro:
+                    show_and_log(article, article.price != former_price)
+                if article.price != former_price:
+                    newprices.append((former_price, article))
         else:
             newarticles.append(article)
         codes[article.ref] = article.sernumber
@@ -466,7 +421,7 @@ def update_prices(parsedfile):
 
 if __name__ == "__main__":
     def main():
-        global appro, archive, time_1, time_2, time_more, time_max, kb
+        global appro, archive
         appro = False
         archive = False
         entrypoint = update_prices
@@ -479,19 +434,6 @@ if __name__ == "__main__":
                 appro = True
             elif opt == "archive":
                 archive = True
-            elif opt in ["pause_set", "set_pause"]:
-                try:
-                    time_1 = float(sys.argv[2].replace(',', '.'))
-                    sys.argv.pop(2)
-                    time_2 = float(sys.argv[2].replace(',', '.'))
-                    sys.argv.pop(2)
-                    time_more = float(sys.argv[2].replace(',', '.'))
-                    sys.argv.pop(2)
-                    time_max = float(sys.argv[2].replace(',', '.'))
-                    sys.argv.pop(2)
-                except:
-                    print(f"La commande {opt} demande 4 nombres après. Ces 4 nombres doivent être entiers ou à virgule.")
-                    sys.exit(1)
             else:
                 print(f"Option inconnue \"{sys.argv[1]}\".")
                 sys.exit(1)
@@ -506,7 +448,6 @@ if __name__ == "__main__":
                 for filename in os.listdir("archive"):
                     if filename.endswith(".pdf"):
                         files.append("./archive/"+filename)
-            kb = KBHit()
             parsedfiles = [get_from_file(filename) for filename in files]
             parsedfiles.sort()
             for parsedfile in parsedfiles:
