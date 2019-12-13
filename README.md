@@ -1,5 +1,8 @@
 # Mode d'emploi
 
+/!\ Cette branche est récemment créée et le README n'a pas encore été mis à jour en accordance avec les changements faits ou prévus.
+L'objectif de cette branche du projet est de changer de point de vue par rapport à l'ancienne (jusqu'au 13 décembre) solution, et de rendre totalement automatique l'appro (il n'y aura plus que les articles nouveaux à loguer manuellement alors qu'avant c'était plus semi-automatique parce qu'il fallait coller à la main des choses copiées automatiquement). Nouvel objectif : Logage en moins d'1 minute pour Auchan et Carrefour. Aucune amélioration pour les autres :/
+
 # Qu'est-ce que c'est
 
 Le script présenté ici a deux fonctions :
