@@ -10,7 +10,7 @@ from time import time, sleep
 
 ### Variables globales
 
-pyautogui.PAUSE = 0.2  #0.05  # Temps entre chaque action du mode full auto
+pyautogui.PAUSE = 0.05  # Temps entre chaque action du mode full auto
 
 brands = ["carrefour", "auchan", "cora_f", "cora_r", "houra", "picard"]
 fullauto = ["carrefour", "auchan"]
@@ -136,7 +136,6 @@ class Article:
                 stm2 = stm2[stm2.index('.')+3:]
             self.price = float(stm2[:stm2.index('.')+3])
             self.TVA = float(line[-1])
-            self.ref = self.sernumber
         elif brand == "auchan":
             if line[0] == "2007984000383":
                 raise ValueError # '2007984000383' est le frais de livraison
@@ -145,7 +144,6 @@ class Article:
             self.qty = int(line[-6])
             self.TVA = float(line[-2])
             self.price = round(float(line[-5]) * (1. + self.TVA*0.01), 2)
-            self.ref = self.sernumber
         elif brand == "cora_f":
             if line[-1] != "€" or line[-3] != "€":
                 raise ValueError
@@ -170,7 +168,6 @@ class Article:
                 self.name = " ".join(line[:-8 + shift])
                 self.price = float(line[-8 + shift])
                 self.qty = int(line[-6 + shift])
-            self.ref = self.name
         elif brand == "cora_r":
             shift = -2 if line[-6] == "€" else 0 # remise
             if line[-1] != "€" or line[-4 + shift] != "€":
@@ -190,7 +187,6 @@ class Article:
                 self.qty = int(line[-3 + shift])
                 self.price = float(line[-5 + shift])
                 self.name = " ".join([wrd for wrd in line[:-7 + shift] if wrd])
-            self.ref = self.name
         elif brand == "houra":
             if "Echantillon Offert" in " ".join(line):
                 raise ValueError
@@ -202,7 +198,6 @@ class Article:
                 self.qty = int(line[-5])
             self.price = float(line[-2].replace(',', '.'))
             self.TVA = float(line[-3].replace(',', '.'))
-            self.ref = self.name
         elif brand == "picard":
             # line[0] n'est pas le code-barres
             if line[-1] == "OFFERT":
@@ -250,49 +245,29 @@ def get_from_file(filename):
         raise NotImplementedError("")
     articles = []
     lines = string.splitlines()
-    if brand in ["cora_r"]:
-        # Les articles sont sur des lignes consécutives. Si un article prend
-        # plusieurs lignes, il y a un saut de ligne avant et après les prix,
-        # sinon tout est sur une ligne et il n'y a pas de saut avant la suite.
-        phase_articles = False
-        i = 0
-        while i < len(lines):
-            if is_article[brand](lines[i]):
-                line = lines[i].split(' ')
-                if line[-1] != "€":
-                    while i+1 < len(lines) and lines[i+1].split(' ') != ['']:
-                        i += 1
-                        line.extend(lines[i].split(' '))
-                    i += 2 # Ca a l'air spécifique mais en fait non
-                    if i >= len(lines):
-                        break
+    i = 0
+    while i < len(lines):
+        if is_article[brand](lines[i]):
+            line = lines[i].split(' ')
+            # Seuls les articles cora_r sont sur des lignes consécutives
+            tcr = (line[-1] != "€")
+            tno = (i+1 < len(lines) and lines[i+1].split(' ') != [''])
+            if (brand == "cora_r" and tcr) or (brand != "cora_r" and tno):
+                # Certains articles sont sur plusieurs lignes
+                while i+1 < len(lines) and lines[i+1].split(' ') != ['']:
+                    i += 1
                     line.extend(lines[i].split(' '))
-                try:
-                    articles.append(Article(line, brand))
-                except (ValueError, IndexError) as e:
-                    pass
-            i += 1
-    else:
-        i = 0
-        while i < len(lines):
-            if is_article[brand](lines[i]):
-                line = lines[i].split(' ')
-                if i+1 < len(lines) and lines[i+1].split(' ') != ['']:
-                    # Certains articles sont sur plusieurs lignes
-                    while i+1 < len(lines) and lines[i+1].split(' ') != ['']:
-                        i += 1
-                        line.extend(lines[i].split(' '))
-                        # Je ne garantis pas l'exactitude du nom pour Auchan
-                        # Ces fdp peuvent écrire des articles sur 2 PAGES
-                    i += 2 # Ca a l'air spécifique mais en fait non
-                    if i >= len(lines):
-                        break
-                    line.extend(lines[i].split(' '))
-                try:
-                    articles.append(Article(line, brand))
-                except (ValueError, IndexError) as e:
-                    pass
-            i += 1
+                    # Je ne garantis pas l'exactitude du nom pour Auchan
+                    # Ces fdp peuvent écrire des articles sur 2 PAGES
+                i += 2 # Ca a l'air spécifique mais en fait non
+                if i >= len(lines):
+                    break
+                line.extend(lines[i].split(' '))
+            try:
+                articles.append(Article(line, brand))
+            except (ValueError, IndexError) as e:
+                pass
+        i += 1
     return date, brand, articles
 
 ### Affichages et prise de contrôle du clavier pour loguer, que si appro = True
@@ -375,7 +350,7 @@ def update_prices(parsedfile):
 
     # Scanner tous les articles, les confronter avec la base de données
     if appro and brand in fullauto:
-        preparation(brand in fullauto)
+        preparation()
     newarticles = []
     newprices = []
     articles = group_by_sernum(articles)
@@ -424,6 +399,7 @@ if __name__ == "__main__":
         global appro, archive
         appro = False
         archive = False
+
         entrypoint = update_prices
         files = []
         while len(sys.argv) > 1:
@@ -435,11 +411,11 @@ if __name__ == "__main__":
             elif opt == "archive":
                 archive = True
             else:
-                print(f"Option inconnue \"{sys.argv[1]}\".")
+                print(f"Option \"{sys.argv[1]}\" inconnue.")
                 sys.exit(1)
             sys.argv.pop(1)
         if appro and archive:
-            print("Les mots-clé appro et archive ne peuvent être utilisés en même temps")
+            print("appro et archive ne peuvent être utilisés en même temps")
             sys.exit(1)
 
         start_time = time()
@@ -456,7 +432,7 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             print("\nScript interrompu définitivement.")
         except UnboundLocalError:
-            print("\nMauvaise syntaxe. Exemples de syntaxe :\npython be.py archive\npython be.py 21.10_facture.pdf appro set_pause 1.25 3 0.5 5")
+            print("\nMauvaise syntaxe. Exemples de syntaxe :\npython be.py archive\npython be.py 21.10_facture.pdf appro")
         except FileNotFoundError:
             print("\nLa facture est introuvable. Il faut qu'elle soit dans le même dossier que le script. Vérifier le nom exact de la facture.")
         except (KeyError, NotImplementedError) as brand:
