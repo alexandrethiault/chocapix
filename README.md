@@ -1,5 +1,7 @@
 # Mode d'emploi
 
+/!\ branche obsolète, laissée ici tant que la nouvelle n'a pas été testée. Merci de vous référer à la branche "Full-auto".
+
 # Qu'est-ce que c'est
 
 Le script présenté ici a deux fonctions :
