@@ -7,7 +7,7 @@ Le script présenté ici a deux fonctions :
 2) De manière plus générale, mais seulement pour Carrefour et Auchan, automatiser l'intégralité du processus de loggage d'appro (à part le loggage de nouveaux aliments, qui nécessite la création à la main d'une nouvelle fiche d'aliment).
 
 Toutefois, ce script n'a pas pour vocation :
-1) De faciliter le changement d'approvisionneur pour une section. Le script n'est d'aucune aide pour le logguage des nouveaux aliments, si ce n'est de prévenir à l'avance quels articles sont nouveaux et quels articles ont déjà été commandés.
+1) De faciliter le changement d'approvisionneur pour une section. Le script n'est d'aucune aide pour le loggage des nouveaux aliments, si ce n'est de prévenir à l'avance quels articles sont nouveaux et quels articles ont déjà été commandés.
 2) D'aider dans les inventaires, et en particulier la vérification que les quantités livrées sont bien les quantités écrites sur les factures. Ce script est dédié uniquement au loggage des appros, et vouloir faire l'inventaire en même temps que l'appro va contre le principe de ce script, qui demande de séparer ces deux tâches.
 
 # Prérequis
