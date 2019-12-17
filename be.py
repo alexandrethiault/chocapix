@@ -10,7 +10,7 @@ from time import time, sleep
 
 ### Variables globales
 
-pyautogui.PAUSE = 0.05  # Temps entre chaque action du mode full auto
+pyautogui.PAUSE = 0.02  # Temps entre chaque action du mode auto (>=0.02!)
 
 brands = ["carrefour", "auchan", "cora_f", "cora_r", "houra", "picard"]
 fullauto = ["carrefour", "auchan"]
@@ -121,8 +121,8 @@ class Article:
 
         Plein de lignes de la facture parsée ne se rapportent pas à un article
         (destinataire, date d'émission de la facture...), il faut aussi savoir
-        les ignorer. L'exception à utiliser est ValueError. Cette exception et
-        IndexError sont rattrapées par la fonction get_from_file qui est la
+        les ignorer. Utiliser pour ça des assert. AssertionError, ValueError
+        et IndexError sont rattrapées par la fonction get_from_file qui est la
         fonction qui crée les instances de Article.
 
         """
@@ -137,59 +137,50 @@ class Article:
             self.price = float(stm2[:stm2.index('.')+3])
             self.TVA = float(line[-1])
         elif brand == "auchan":
-            if line[0] == "2007984000383":
-                raise ValueError # '2007984000383' est le frais de livraison
+            assert line[0] != "2007984000383"  # Frais de livraison
             self.sernumber = line[0]
             self.name = " ".join(line[1:-6])
             self.qty = int(line[-6])
             self.TVA = float(line[-2])
             self.price = round(float(line[-5]) * (1. + self.TVA*0.01), 2)
         elif brand == "cora_f":
-            if line[-1] != "€" or line[-3] != "€":
-                raise ValueError
+            shift = -2 if line[-6] == "€" else 0
+            assert line[-1] == "€" and line[-3] == "€"
             TVAcode = line[-5]
-            if TVAcode == "3":
-                self.TVA = 5.50
-            else:
-                self.TVA = 20.00
+            self.TVA = 5.50 if TVAcode == "3" else 20.00
             if "€/kg" in line:
                 i = line.index("€/kg")
                 self.name = " ".join(line[:i-3])
                 self.price = float(line[i-1])
                 qty = line[i-3]
-                if "kg" in qty:
+                assert qty.endswith("g")
+                if qty.endswith("kg"):
                     self.qty = float(qty[:-2])
-                elif "g" in qty:
-                    self.qty = round(float(qty[:-1])*0.001, 3)
                 else:
-                    raise ValueError
+                    self.qty = round(float(qty[:-1])*0.001, 3)
             else:
-                shift = -2 if line[-6] == "€" else 0
                 self.name = " ".join(line[:-8 + shift])
                 self.price = float(line[-8 + shift])
                 self.qty = int(line[-6 + shift])
         elif brand == "cora_r":
             shift = -2 if line[-6] == "€" else 0 # remise
-            if line[-1] != "€" or line[-4 + shift] != "€":
-                raise ValueError
+            assert line[-1] == "€" and line[-4 + shift] == "€"
             if "€/kg" in line:
                 i = line.index("€/kg")
                 self.name = " ".join([wrd for wrd in line[:i-3] if wrd])
                 self.price = float(line[i-1])
                 qty = line[i-3]
-                if "kg" in qty:
+                assert qty.endswith("g")
+                if qty.endswith("kg"):
                     self.qty = float(qty[:-2])
-                elif "g" in qty:
-                    self.qty = round(float(qty[:-1])*0.001, 3)
                 else:
-                    raise ValueError
+                    self.qty = round(float(qty[:-1])*0.001, 3)
             else:
                 self.qty = int(line[-3 + shift])
                 self.price = float(line[-5 + shift])
                 self.name = " ".join([wrd for wrd in line[:-7 + shift] if wrd])
         elif brand == "houra":
-            if "Echantillon Offert" in " ".join(line):
-                raise ValueError
+            assert "Echantillon Offert" not in " ".join(line)
             # line[0] n'est pas le code-barres
             self.name = " ".join([wrd for wrd in line[1:-5] if wrd])
             if ',' in line[-5]:
@@ -202,8 +193,7 @@ class Article:
             # line[0] n'est pas le code-barres
             if line[-1] == "OFFERT":
                 line[-1:] = ["0,00", "€", "0,00", "€", "0,00%"]
-            if line[-2] != "€" or line[-4] != "€":
-                raise ValueError
+            assert line[-2] == "€" and line[-4] == "€"
             self.name = " ".join([wrd for wrd in line[1:-6] if wrd])
             if ',' in line[-6]:
                 self.qty = float(line[-6].replace(',', '.'))
@@ -238,11 +228,11 @@ def get_from_file(filename):
             brand = br
             break
     else:
-        raise NotImplementedError("")
+        raise NotImplementedError(filename)
     try:
         date = stddate(finddate[brand](string))
     except:
-        raise NotImplementedError("")
+        raise NotImplementedError(filename)
     articles = []
     lines = string.splitlines()
     i = 0
@@ -265,7 +255,7 @@ def get_from_file(filename):
                 line.extend(lines[i].split(' '))
             try:
                 articles.append(Article(line, brand))
-            except (ValueError, IndexError) as e:
+            except (ValueError, IndexError, AssertionError) as e:
                 pass
         i += 1
     return date, brand, articles
@@ -275,12 +265,23 @@ def get_from_file(filename):
 def preparation():
     # Prévenir du début imminent de l'appro
     # Afficher dans l'invite de commande "Début dans 3...2...1..."
-    pyautogui.alert("A partir du moment où vous fermerez cette fenêtre, vous aurez 3 secondes pour cliquer dans la case du nom d'aliment dans le menu appro, et l'appro commencera.", "Début de l'appro")
+    pyautogui.alert("A partir du moment où vous fermerez cette fenêtre, vous aurez 3 secondes pour cliquer dans la case du nom d'aliment dans le menu appro, sans faire sortir la souris en dehors de la case juste après, et l'appro commencera.", "Début de l'appro")
     print("\nDébut dans ", end="", flush=True)
     for i in range(12):
         print(3-i//4 if i % 4 == 0 else ".", end="", flush=True)
         sleep(0.25)
     print()
+
+def pause_script(newpos, posref):
+    if newpos != posref:
+        msg = pyautogui.confirm(text="Pause invoquée par mouvement de la souris\nOK pour continuer l'exécution du script\nCancel pour l'interrompre définitivement.")
+        if msg == "OK":
+            sleep(0.5)
+            pyautogui.moveTo(posref[0], posref[1])
+            pyautogui.click() #
+            sleep(0.5)
+        else:
+            raise KeyboardInterrupt
 
 def show_and_log(article, pricechange=False):
     # Afficher un article dans l'invite de commande, et en fullauto, le loguer
@@ -288,24 +289,28 @@ def show_and_log(article, pricechange=False):
         print(f"{article.sernumber} - {article.qty}\t{article.name}")
         pos = pyautogui.position()
         pyautogui.typewrite(article.ref)
-        pyautogui.doubleClick()
+        pause_script(pyautogui.position(), pos)
         pyautogui.press('return')
+        sleep(pyautogui.PAUSE*10)
+        pause_script(pyautogui.position(), pos)
+        pyautogui.click()
         pyautogui.press('tab')
         if pricechange:
             pyautogui.press('tab')
             pyautogui.typewrite(str(article.price).replace('.', ','))
             pyautogui.hotkey('shift', 'tab')
+        pause_script(pyautogui.position(), pos)
+        pyautogui.press('return')
+        sleep(pyautogui.PAUSE*5)
         pyautogui.typewrite(str(article.qty).replace('.', ','))
-        pyautogui.hotkey('shift', 'tab')
+        pause_script(pyautogui.position(), pos)
+        pyautogui.click()
         pyautogui.press('esc')
-        pyautogui.press('backspace')
-        if pyautogui.position() != pos:
-            msg = pyautogui.confirm(text="Pause invoquée par mouvement de la souris\nOK pour continuer l'exécution du script\nCancel pour l'interrompre définitivement.")
-            if msg == "OK":
-                sleep(0.5)
-                pyautogui.moveTo(pos[0], pos[1])
-            else:
-                raise KeyboardInterrupt
+        sleep(pyautogui.PAUSE*10)
+        for _ in range(13):
+            pyautogui.press('backspace')
+        pause_script(pyautogui.position(), pos)
+        pyautogui.click()
     else:
         print(f"{article.qty}\t{article.name}")
 
@@ -324,7 +329,7 @@ def group_by_sernum(articles):
 
 def update_prices(parsedfile):
     date, brand, articles = parsedfile
-    if brand[-2] == '_':  # "cora_f", "cora_r"...
+    if len(brand) >= 2 and brand[-2] == '_':  # "cora_f", "cora_r"...
         brand = brand[:-2]
 
     # Récupérer les données de la base de données des prix si elle existe
@@ -428,7 +433,10 @@ if __name__ == "__main__":
             parsedfiles.sort()
             for parsedfile in parsedfiles:
                 entrypoint(parsedfile)
-            print("\nBase de données des prix mise à jour." + ("" if archive else " Ecriture du compte-rendu des évolutions de prix terminée."))
+            if files:
+                print("\nBase de données des prix mise à jour." + ("" if archive else " Ecriture du compte-rendu des évolutions de prix terminée."))
+            else:
+                print("\nAucune facture n'a été donnée en argument.")
         except KeyboardInterrupt:
             print("\nScript interrompu définitivement.")
         except UnboundLocalError:
@@ -439,7 +447,7 @@ if __name__ == "__main__":
             if brand in brands:
                 print(f"\nLa façon de parser les factures de {brand} n'a pas encore été codée.")
             else:
-                print(f"\nLa marque n'a pas pu être reconnue. Il peut s'agir d'une nouvelle marque (parsing pas encore implémenté) ou alors la forme de la facture a changé (parsing à refaire).")
+                print(f"\nLa marque de {brand} n'a pas pu être reconnue. Il peut s'agir d'une nouvelle marque (parsing pas encore implémenté) ou alors la forme de la facture a changé (parsing à refaire).")
         end_time = time()
 
         print(f"\nTemps écoulé : {end_time-start_time} secondes\n")
