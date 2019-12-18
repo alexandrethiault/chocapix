@@ -3,14 +3,14 @@
 
 import os
 import sys
-import pyautogui
+import pyautogui as gui
 
 from tika import parser
 from time import time, sleep
 
 ### Variables globales
 
-pyautogui.PAUSE = 0.02  # Temps entre chaque action du mode auto (>=0.02!)
+gui.PAUSE = 0.02  # Temps entre chaque action du mode auto (>=0.02!)
 
 brands = ["carrefour", "auchan", "cora_f", "cora_r", "houra", "picard"]
 fullauto = ["carrefour", "auchan"]
@@ -265,7 +265,7 @@ def get_from_file(filename):
 def preparation():
     # Prévenir du début imminent de l'appro
     # Afficher dans l'invite de commande "Début dans 3...2...1..."
-    pyautogui.alert("A partir du moment où vous fermerez cette fenêtre, vous aurez 3 secondes pour cliquer dans la case du nom d'aliment dans le menu appro, sans faire sortir la souris en dehors de la case juste après, et l'appro commencera.", "Début de l'appro")
+    gui.alert("A partir du moment où vous fermerez cette fenêtre, vous aurez 3 secondes pour aller dans le menu appro, scroll en haut, cliquer au milieu de la case du nom d'aliment, en évitant de faire sortir la souris en dehors de la case juste après. Au bout des 3 secondes, l'appro commencera.\nPour rappel, le script s'arrête par mouvement de la souris.", "Début de l'appro")
     print("\nDébut dans ", end="", flush=True)
     for i in range(12):
         print(3-i//4 if i % 4 == 0 else ".", end="", flush=True)
@@ -274,11 +274,12 @@ def preparation():
 
 def pause_script(newpos, posref):
     if newpos != posref:
-        msg = pyautogui.confirm(text="Pause invoquée par mouvement de la souris\nOK pour continuer l'exécution du script\nCancel pour l'interrompre définitivement.")
+        msg = gui.confirm(text="Pause invoquée par mouvement de la souris\nOK pour continuer l'exécution du script\nCancel pour l'interrompre définitivement.")
         if msg == "OK":
             sleep(0.5)
-            pyautogui.moveTo(posref[0], posref[1])
-            pyautogui.click() #
+            gui.press('pageup')
+            gui.moveTo(posref[0], posref[1])
+            gui.click() #
             sleep(0.5)
         else:
             raise KeyboardInterrupt
@@ -287,30 +288,27 @@ def show_and_log(article, pricechange=False):
     # Afficher un article dans l'invite de commande, et en fullauto, le loguer
     if article.brand in fullauto:
         print(f"{article.sernumber} - {article.qty}\t{article.name}")
-        pos = pyautogui.position()
-        pyautogui.typewrite(article.ref)
-        pause_script(pyautogui.position(), pos)
-        pyautogui.press('return')
-        sleep(pyautogui.PAUSE*10)
-        pause_script(pyautogui.position(), pos)
-        pyautogui.click()
-        pyautogui.press('tab')
+        pos = gui.position()
+        gui.typewrite(article.ref)
+        pause_script(gui.position(), pos)
+        gui.press('return')
+        sleep(gui.PAUSE*10)  # Laisser l'overlay arriver
+        pause_script(gui.position(), pos)
+        gui.click()
+        gui.press('tab')
         if pricechange:
-            pyautogui.press('tab')
-            pyautogui.typewrite(str(article.price).replace('.', ','))
-            pyautogui.hotkey('shift', 'tab')
-        pause_script(pyautogui.position(), pos)
-        pyautogui.press('return')
-        sleep(pyautogui.PAUSE*5)
-        pyautogui.typewrite(str(article.qty).replace('.', ','))
-        pause_script(pyautogui.position(), pos)
-        pyautogui.click()
-        pyautogui.press('esc')
-        sleep(pyautogui.PAUSE*10)
-        for _ in range(13):
-            pyautogui.press('backspace')
-        pause_script(pyautogui.position(), pos)
-        pyautogui.click()
+            gui.press('tab')
+            gui.typewrite(str(article.price).replace('.', ','))
+            gui.hotkey('shift', 'tab')
+        gui.press('return')
+        sleep(gui.PAUSE*5)  # Laisser l'encart rouge partir
+        gui.typewrite(str(article.qty).replace('.', ','))
+        pause_script(gui.position(), pos)
+        gui.click()
+        gui.press('esc')
+        sleep(gui.PAUSE*10)  # Laisser l'overlay partir
+        gui.press('backspace', len(article.ref), gui.PAUSE)
+        pause_script(gui.position(), pos)
     else:
         print(f"{article.qty}\t{article.name}")
 
