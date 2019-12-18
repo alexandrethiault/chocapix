@@ -76,7 +76,7 @@ def new_parsing(filename):
     return string
 
 class Article:
-    def __init__(self, line, brand):
+    def __init__(self, line, brand, date=None):
         """
 
         Définit les propriétés d'un article à partir d'une ligne de la
@@ -128,14 +128,21 @@ class Article:
         """
         self.brand = brand
         if brand == "carrefour":
-            self.sernumber = line[0]
-            self.name = " ".join(line[1:-3])
-            self.qty = int(line[-3])
-            stm2 = line[-2][line[-2].index('.')+3:]
-            if stm2.count('.') == 2:  # Il y a une remise sur cet article
-                stm2 = stm2[stm2.index('.')+3:]
-            self.price = float(stm2[:stm2.index('.')+3])
-            self.TVA = float(line[-1])
+            if date<"20191201":
+                self.sernumber = line[0]
+                self.name = " ".join(line[1:-3])
+                self.qty = int(line[-3])
+                stm2 = line[-2][line[-2].index('.')+3:]
+                if stm2.count('.') == 2:  # Il y a une remise sur cet article
+                    stm2 = stm2[stm2.index('.')+3:]
+                self.price = float(stm2[:stm2.index('.')+3])
+                self.TVA = float(line[-1])
+            else:
+                self.sernumber = line[0]
+                self.name = " ".join(line[1:-4])
+                self.qty = int(line[-4])
+                self.price = float(line[-1])
+                self.TVA = float(line[-2])
         elif brand == "auchan":
             assert line[0] != "2007984000383"  # Frais de livraison
             self.sernumber = line[0]
@@ -254,7 +261,7 @@ def get_from_file(filename):
                     break
                 line.extend(lines[i].split(' '))
             try:
-                articles.append(Article(line, brand))
+                articles.append(Article(line, brand, date))
             except (ValueError, IndexError, AssertionError) as e:
                 pass
         i += 1
@@ -381,11 +388,10 @@ def update_prices(parsedfile):
             for (former_price, article) in newprices:
                 print(f"{article.name} : évolution de {former_price} à {article.price}")
                 cr.write(f"{article.name} : évolution de {former_price} à {article.price}\n")
-        if appro:  # ... et lister les nouveaux articles
-            if newarticles:
-                print("\nNouveaux articles :")
-            for article in newarticles:
-                print(article)
+        if newarticles:
+            print("\nNouveaux articles :")
+        for article in newarticles:
+            print(article)
     # Réécrire une base de données des prix à la place de l'ancienne
     with open(f"prix_{brand}.txt", 'w') as newfile:
         lines = []
