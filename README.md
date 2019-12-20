@@ -62,7 +62,9 @@ _Dans des versions précédentes, il fallait lancer la commande une fois pour ch
 
 Dans le cas de Carrefour et Auchan, l'auto-appro est rendue possible mais logue les articles grâce à leurs codes-barres. Si ce n'est pas déjà fait, il faudra donc faire connaître à Chocapix tous les codes-barres des articles que vous avez logués pour ces marques. Pour aider dans cette tâche, on pourra utiliser le fichier texte associé à la marque, qui liste justement tous les articles que vous avez commandés auprès de cet approvisionneur.
 
-# Utilisation pour une appro Carrefour ou Auchan
+# Utilisation pour une auto-appro Carrefour ou Auchan
+
+Les auto-appros ont été testées et fonctionnent avec Opera, et ne fonctionnent sous Safari que si aucun article n'est "caché". Des tests avec d'autres navigateurs sont à venir.
 
 Ouvrir un invite de commande dans le dossier qui contient le fichier Python et la facture. Ouvrir Chocapix et cliquer sur "loguer une appro".
 
@@ -82,7 +84,7 @@ Enfin, le script affiche dans l'invite de commande la liste des nouveaux article
 
 C'est terminé. L'invite de commande peut être fermé. A l'issue de l'appro, un compte-rendu au format .txt est créé, listant tous les changements de prix, à l'exception des articles signalés comme non loggables. Il n'y a aucun danger à modifier ou supprimer ce compte-rendu, sa vocation est purement informative. Le respo news peut par exemple recopier les changements importants dans l'onglet des nouvelles afin d'informer les membres de sa section sur les bonnes ou mauvaises surprises qui peuvent les attendre en loggant leurs aliments préférés.
 
-# Utilisation pour une appro Cora, Houra ou Picard
+# Utilisation lors d'une appro Cora, Houra ou Picard
 
 Dans le cas de Cora, Houra ou Picard, il n'y a pas de codes-barres dans les factures. Comme les noms connus par Chocapix ne correspondent pas exactement aux noms des articles dans les factures, la première suggestion de Chocapix peut ne pas être la bonne, donc le script ne peut pas vraiment rien remplir pour la case du nom de l'article. Le script n'est donc d'aucune aide pour la majorité du loggage de l'appro. En revanche il reste capable de donner la liste des articles qui ont changé de prix, ce qui peut déjà faire gagner un peu de temps.
 
@@ -118,3 +120,4 @@ Bouger la souris en mode appro avec Carrefour ou Auchan ou appuyer sur Ctrl+C da
 # Fonctionnalités à venir
 - Prise en charge de Intermarché (?)
 - Prise en charge des récapitulatifs de commande de Carrefour
+- Tests de l'auto appro au moins sur Chrome, Firefox et Edge
