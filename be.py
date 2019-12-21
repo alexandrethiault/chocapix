@@ -128,7 +128,7 @@ class Article:
         """
         self.brand = brand
         if brand == "carrefour":
-            if date<"20191201":
+            if date < "20191210":
                 self.sernumber = line[0]
                 self.name = " ".join(line[1:-3])
                 self.qty = int(line[-3])
@@ -217,7 +217,7 @@ class Article:
             self.ref = self.name
 
     def __repr__(self):
-        return f"{self.sernumber} {self.name} - Qté : {self.qty} - Prix : {self.price}"
+        return f"{self.sernumber} {self.name} - Qté : {self.qty} - Prix : {self.price}"  # Si cette ligne cause une SyntaxError, c'est que la version de Python utilisée n'est pas >= 3.6 !
 
 def stddate(jjmmaaaa):
     # Récupérer une date qui s'ordonne bien (aaaammjj) à partir de jj/mm/aaaa
@@ -229,7 +229,7 @@ def stddate(jjmmaaaa):
 def get_from_file(filename):
     # Récupérer la date, la marque et tous les articles de la facture filename
     raw = parser.from_file(filename)
-    string = raw['content']
+    string = raw["content"]
     for br in brands:
         if keyword[br] in string:
             brand = br
@@ -245,21 +245,21 @@ def get_from_file(filename):
     i = 0
     while i < len(lines):
         if is_article[brand](lines[i]):
-            line = lines[i].split(' ')
+            line = lines[i].split(" ")
             # Seuls les articles cora_r sont sur des lignes consécutives
             tcr = (line[-1] != "€")
-            tno = (i+1 < len(lines) and lines[i+1].split(' ') != [''])
+            tno = (i+1 < len(lines) and lines[i+1].split(" ") != [''])
             if (brand == "cora_r" and tcr) or (brand != "cora_r" and tno):
                 # Certains articles sont sur plusieurs lignes
-                while i+1 < len(lines) and lines[i+1].split(' ') != ['']:
+                while i+1 < len(lines) and lines[i+1].split(" ") != ['']:
                     i += 1
-                    line.extend(lines[i].split(' '))
+                    line.extend(lines[i].split(" "))
                     # Je ne garantis pas l'exactitude du nom pour Auchan
                     # Ces fdp peuvent écrire des articles sur 2 PAGES
                 i += 2 # Ca a l'air spécifique mais en fait non
                 if i >= len(lines):
                     break
-                line.extend(lines[i].split(' '))
+                line.extend(lines[i].split(" "))
             try:
                 articles.append(Article(line, brand, date))
             except (ValueError, IndexError, AssertionError) as e:
@@ -283,8 +283,8 @@ def pause_script(newpos, posref):
     if newpos != posref:
         msg = gui.confirm(text="Pause invoquée par mouvement de la souris\nOK pour continuer l'exécution du script\nCancel pour l'interrompre définitivement.")
         if msg == "OK":
-            sleep(0.5)
             gui.press('pageup')
+            sleep(0.5)
             gui.moveTo(posref[0], posref[1])
             gui.click() #
             sleep(0.5)
@@ -334,6 +334,8 @@ def group_by_sernum(articles):
 
 def update_prices(parsedfile):
     date, brand, articles = parsedfile
+    if not articles:
+        raise NotImplementedError(brand+"0")
     if len(brand) >= 2 and brand[-2] == '_':  # "cora_f", "cora_r"...
         brand = brand[:-2]
 
@@ -344,7 +346,7 @@ def update_prices(parsedfile):
     names = {}
     hidden = set()
     try:
-        with open(f"prix_{brand}.txt", 'r') as former:
+        with open(f"prix_{brand}.txt", "r", encoding="utf-8") as former:
             lines = [line.split() for line in former.readlines()]
             for line in lines:
                 wl, code, value = line[:3]
@@ -382,7 +384,7 @@ def update_prices(parsedfile):
 
     # Lister et créer un compte rendu des changements de prix...
     if not archive:
-        with open(f"compte-rendu_{brand}_{date}.txt", 'w') as cr:
+        with open(f"compte-rendu_{brand}_{date}.txt", "w") as cr:
             if newprices:
                 print("\nEvolutions de prix :")
             for (former_price, article) in newprices:
@@ -393,7 +395,7 @@ def update_prices(parsedfile):
         for article in newarticles:
             print(article)
     # Réécrire une base de données des prix à la place de l'ancienne
-    with open(f"prix_{brand}.txt", 'w') as newfile:
+    with open(f"prix_{brand}.txt", "w", encoding="utf-8") as newfile:
         lines = []
         for key, value in prices.items():
             lines.append(f"{1*(key in hidden)} {codes[key]} {value} {names[key]}\n")
@@ -450,8 +452,10 @@ if __name__ == "__main__":
         except (KeyError, NotImplementedError) as brand:
             if brand in brands:
                 print(f"\nLa façon de parser les factures de {brand} n'a pas encore été codée.")
+            elif brand and brand[:-1] in brands and brand[-1] == "0":
+                print(f"\nAucun article n'a pu être reconnu. Il semble que {brand[:-1]} a légèrement modifié la forme de ses factures.")
             else:
-                print(f"\nLa marque de {brand} n'a pas pu être reconnue. Il peut s'agir d'une nouvelle marque (parsing pas encore implémenté) ou alors la forme de la facture a changé (parsing à refaire).")
+                print(f"\nLa marque de {brand} n'a pas pu être reconnue. Il peut s'agir d'une nouvelle marque (parsing pas encore implémenté) ou alors la forme de la facture a beaucoup changé (parsing à refaire).")
         end_time = time()
 
         print(f"\nTemps écoulé : {end_time-start_time} secondes\n")
