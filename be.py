@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import os
@@ -37,30 +37,22 @@ finddate = {
     "picard": (lambda s: s[s.find("DATE : ")+7:s.find("DATE : ")+17])
 }
 
-#  Indicateur (pas forcément 100% fiable) qu'un article commence à cette ligne
+# Indicateurs préliminaire qu'un article commence peut-être à cette ligne
 def article_with_code(length, line):
     return len(line) >= length and line[:length].isdigit()
-
-def article_cora_f(line):
-    if not line: return False
-    if "Frais de " in line: return False
-    if "Code TVA" in line: return False
-    if "3 5.50 % " in line: return False
-    if "7 20.00 % " in line: return False
-    if "Cora - Siège Social" in line: return False
-    return True
 
 def article_cora_r(line):
     if not line: return False
     if "Qté Remise Total TTC" in line: return False
     if "Récapitulatif" in line: return False
     if "Total articles :" in line: return False
-    return article_cora_f(line)
+    if "Frais de " in line: return False
+    return True
 
 is_article = {
     "carrefour": (lambda line: article_with_code(13, line)),
     "auchan": (lambda line: article_with_code(13, line)),
-    "cora_f": article_cora_f,
+    "cora_f": (lambda line: line and "Frais de " not in line),
     "cora_r": article_cora_r,
     "houra": (lambda line: line.isdigit() or " " in line and line[:line.index(" ")].isdigit()),
     "picard": (lambda line: article_with_code(6, line))
@@ -214,7 +206,7 @@ class Article:
             self.ref = self.sernumber
         else:
             self.sernumber = "-"
-            self.ref = self.name
+            self.ref = self.name[:30]
 
     def __repr__(self):
         return f"{self.sernumber} {self.name} - Qté : {self.qty} - Prix : {self.price}"  # Si cette ligne cause une SyntaxError, c'est que la version de Python utilisée n'est pas >= 3.6 !
@@ -255,7 +247,7 @@ def get_from_file(filename):
                     i += 1
                     line.extend(lines[i].split(" "))
                     # Je ne garantis pas l'exactitude du nom pour Auchan
-                    # Ces fdp peuvent écrire des articles sur 2 PAGES
+                    # et Cora qui peuvent écrire des noms sur 2 PAGES
                 i += 2 # Ca a l'air spécifique mais en fait non
                 if i >= len(lines):
                     break
@@ -349,10 +341,10 @@ def update_prices(parsedfile):
         with open(f"prix_{brand}.txt", "r", encoding="utf-8") as former:
             lines = [line.split() for line in former.readlines()]
             for line in lines:
-                wl, code, value = line[:3]
+                wl, code, price = line[:3]
                 name = " ".join(line[3:])
-                key = code if code != "-" else name
-                prices[key] = float(value)
+                key = code if code != "-" else name[:30]
+                prices[key] = float(price)
                 names[key] = name
                 codes[key] = code
                 if wl == "1":
@@ -385,20 +377,24 @@ def update_prices(parsedfile):
     # Lister et créer un compte rendu des changements de prix...
     if not archive:
         with open(f"compte-rendu_{brand}_{date}.txt", "w") as cr:
+            cr.write("--- Fichier généré automatiquement ---\n")
             if newprices:
                 print("\nEvolutions de prix :")
+                cr.write("\nEvolutions de prix :\n")
             for (former_price, article) in newprices:
                 print(f"{article.name} : évolution de {former_price} à {article.price}")
                 cr.write(f"{article.name} : évolution de {former_price} à {article.price}\n")
-        if newarticles:
-            print("\nNouveaux articles :")
-        for article in newarticles:
-            print(article)
+            if newarticles:
+                print("\nNouveaux articles :")
+                cr.write("\nNouveaux articles :\n")
+            for article in newarticles:
+                print(article)
+                cr.write(f"{article}\n")
     # Réécrire une base de données des prix à la place de l'ancienne
     with open(f"prix_{brand}.txt", "w", encoding="utf-8") as newfile:
         lines = []
-        for key, value in prices.items():
-            lines.append(f"{1*(key in hidden)} {codes[key]} {value} {names[key]}\n")
+        for ref, price in prices.items():
+            lines.append(f"{1*(ref in hidden)} {codes[ref]} {price} {names[ref]}\n")
         lines.sort(key=lambda st: st[2:])  # ça sert qu'à aider le débug
         for line in lines:
             newfile.write(line)
