@@ -64,7 +64,7 @@ Dans le cas de Carrefour et Auchan, l'auto-appro est rendue possible mais logue 
 
 # Utilisation pour une auto-appro Carrefour ou Auchan
 
-Les auto-appros sont encore en stade expérimental. Elles ont été testées avec succès sous Opera, mais ne fonctionnent pas sous Safari. Des tests avec d'autres navigateurs sont à venir. Il ne faut pas s'attendre à ce que ces auto-appros marchent sous Safari dans un futur proche.
+Les auto-appros sont encore en stade expérimental. Elles ont été testées avec succès sous Chrome Opera, mais ne fonctionnent pour l'instant pas sous Safari et Firefox.
 
 Ouvrir un invite de commande dans le dossier qui contient le fichier Python et la facture. Ouvrir Chocapix et cliquer sur "loguer une appro".
 
@@ -116,4 +116,4 @@ Bouger la souris en mode appro avec Carrefour ou Auchan ou appuyer sur Ctrl+C da
 # Fonctionnalités à venir
 - Prise en charge de Intermarché (?)
 - Prise en charge des récapitulatifs de commande de Carrefour
-- Tests de l'auto appro au moins sur Chrome, Firefox et Edge
+- Faire fonctionner l'auto-appro sur Safari et Firefox (touche shift tab au lieu de tab pour ces navigateurs)
