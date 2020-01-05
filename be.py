@@ -261,15 +261,14 @@ def get_from_file(filename):
 
 ### Affichages et prise de contrôle du clavier pour loguer, que si appro = True
 
-def preparation():
+def alert_start():
     # Prévenir du début imminent de l'appro
-    # Afficher dans l'invite de commande "Début dans 3...2...1..."
     gui.alert("A partir du moment où vous fermerez cette fenêtre, vous aurez 3 secondes pour aller dans le menu appro, scroll en haut, cliquer au milieu de la case du nom d'aliment, en évitant de faire sortir la souris en dehors de la case juste après. Au bout des 3 secondes, l'appro commencera.\nPour rappel, le script s'arrête par mouvement de la souris.", "Début de l'appro")
-    print("\nDébut dans ", end="", flush=True)
-    for i in range(12):
-        print(3-i//4 if i % 4 == 0 else ".", end="", flush=True)
-        sleep(0.25)
-    print()
+    sleep(3)
+
+def alert_end():
+    # Prévenir de la fin de la partie automatique de l'appro
+    gui.alert("L'auto-appro est terminée, l'invite de commande peut être fermé. Les prix ont déjà été mis à jour.\nIl reste encore à ajouter manuellement les nouveaux articles. Ils sont listés dans le compte-rendu de l'appro.", "Fin de l'auto-appro")
 
 def pause_script(newpos, posref):
     if newpos != posref:
@@ -354,7 +353,7 @@ def update_prices(parsedfile):
 
     # Scanner tous les articles, les confronter avec la base de données
     if appro and brand in fullauto:
-        preparation()
+        alert_start()
     newarticles = []
     newprices = []
     articles = group_by_sernum(articles)
@@ -373,22 +372,20 @@ def update_prices(parsedfile):
         codes[article.ref] = article.sernumber
         prices[article.ref] = article.price
         names[article.ref] = article.name
+    if appro and brand in fullauto:
+        alert_end()
 
     # Lister et créer un compte rendu des changements de prix...
     if not archive:
         with open(f"compte-rendu_{brand}_{date}.txt", "w") as cr:
             cr.write("--- Fichier généré automatiquement ---\n")
             if newprices:
-                print("\nEvolutions de prix :")
                 cr.write("\nEvolutions de prix :\n")
             for (former_price, article) in newprices:
-                print(f"{article.name} : évolution de {former_price} à {article.price}")
                 cr.write(f"{article.name} : évolution de {former_price} à {article.price}\n")
             if newarticles:
-                print("\nNouveaux articles :")
                 cr.write("\nNouveaux articles :\n")
             for article in newarticles:
-                print(article)
                 cr.write(f"{article}\n")
     # Réécrire une base de données des prix à la place de l'ancienne
     with open(f"prix_{brand}.txt", "w", encoding="utf-8") as newfile:
