@@ -5,21 +5,20 @@
 # Qu'est-ce que c'est
 
 Le script présenté ici a deux fonctions :
-1) Suivre l'évolution des prix de supermarché au moment du loggage d'une nouvelle appro en créant un fichier récapitulant ces changements, de façon à pouvoir informer la section de ces changements de prix sans que le respo appro n'ait à y consacrer son temps et son énergie.
-2) De manière plus générale, optimiser la productivité du respo appro dans le loggage pour accélérer cette opération fastidieuse et répétitive, en lui retirant la charge de la plupart des actions qu'il a toujours dû faire pour logguer une appro (allers-retours de la souris entre facture et Chocapix, interruptions régulières par les nouveaux aliments qui mettent plus de temps à logguer, vérification au cas par cas des changements de prix des aliments). Cette fonctionnalité est pensée et optimisée pour les utilisateurs de souris, mais même sans souris un gain de temps presque aussi important est possible. L'objectif est de faire tomber le temps du loggage des appros à environ 5 minutes. Ce script se présente donc comme concurrent et alternative au loggage avec scanner de code-barres.
+1) Accélérer lors du loggage d'une appro la mise à jour des prix Chocapix en faisant lire au script la facture de l'appro pour pouvoir donner au respo appro une liste des prix qui ont changé.
+2) De manière plus générale, mais seulement pour Carrefour et Auchan, automatiser l'intégralité du processus de loggage d'appro (à part le loggage de nouveaux aliments, qui nécessite la création à la main d'une nouvelle fiche d'aliment).
 
 Toutefois, ce script n'a pas pour vocation :
-1) De remplacer le respo appro. Le script n'est pas capable d'effectuer tout seul l'appro, certaines actions restent à la charge du respo appro.
-2) De faciliter le changement d'approvisionneur pour une section. Le logguage des nouveaux aliments, qui requiert la création de nouvelles fiches d'aliments, fait partie de ces actions qui restent à la charge du respo appro, et contre lesquelles le script n'est d'aucune aide
-3) D'aider dans les inventaires, et en particulier la vérification que les quantités livrées sont bien les quantités écrites sur les factures. Ce script est tout simplement dédié uniquement au loggage des appros, et vouloir faire l'inventaire en même temps que l'appro va contre le principe de ce script, qui veut séparer ces deux tâches.
+1) De faciliter le changement d'approvisionneur pour une section. Le script n'est d'aucune aide pour le loggage des nouveaux aliments, si ce n'est de prévenir à l'avance quels articles sont nouveaux et quels articles ont déjà été commandés.
+2) D'aider dans les inventaires, et en particulier la vérification que les quantités livrées sont bien les quantités écrites sur les factures. Ce script est dédié uniquement au loggage des appros, et vouloir faire l'inventaire en même temps que l'appro va contre le principe de ce script, qui demande de séparer ces deux tâches.
 
 # Prérequis
 
 Le script a été testé avec succès sur Windows 10, MacOS, Ubuntu, et un WSL Ubuntu. Rien n'est garanti pour d'autres systèmes d'exploitation.
 
-Pour logguer une appro avec ce script il faut au préalable avoir la facture PDF originale (pas un scan) et un interpréteur Python 3.6 ou plus récent. Il sera aussi utile d'avoir le plus de factures possible venant des anciennes appros. Renommer éventuellement les factures pour qu'il n'y ait pas d'espaces dans leurs noms. Télécharger le fichier be.py et le ranger dans un dossier qui contiendra aussi les factures. Créer un sous-dossier, l'appeler "archive", et y ranger toutes les factures qui ont déjà été logguées par le passé.
+Pour loguer une appro avec ce script il faut au préalable avoir la facture PDF originale (pas un scan) et un interpréteur Python 3.6 ou plus récent. Il sera aussi utile d'avoir le plus de factures possible venant des anciennes appros. Renommer éventuellement les factures pour qu'il n'y ait pas d'espaces dans leurs noms. Télécharger le fichier be.py et le ranger dans un dossier qui contiendra aussi les factures. Créer un sous-dossier, l'appeler "archive", et y ranger toutes les factures qui ont déjà été loguées par le passé.
 
-Pour l'instant les factures suivantes sont pris en charge :
+Pour l'instant les factures suivantes sont prises en charge :
 - Carrefour
 - Auchan
 - Picard
@@ -27,9 +26,9 @@ Pour l'instant les factures suivantes sont pris en charge :
 - Cora (récapitulatifs de commande)
 - Houra
 
-Il faudra éventuellement installer les modules Python suivants, s'ils provoquent des erreurs d'imports : time, tika, sys et pyperclip ; sur Windows seulement : msvcrt ; sur les autres OS seulement : termios, atexit et select
+Il faudra éventuellement installer les modules Python suivants, s'ils provoquent des erreurs d'imports : os, sys, time, tika et pyautogui
   
-Pour installer un module Python, il faut taper dans un invite de commande :
+Sauf pour pyautogui, pour installer un module Python, il faut taper dans un invite de commande, en remplaçant éventuellement pip par pip3 :
 
 pip install nom_du_module
 
@@ -39,141 +38,89 @@ Ou plus simplement, si votre interpréteur est anaconda, taper directement dans 
 
 Si cela ne marche pas, c'est probablement que la version utilisée de Python est antérieure à 3.4 ou que plusieurs versions de Python sont installées. Dans tous les cas, https://docs.python.org/3/installing/index.html est une ressource utile.
 
-Pour les utilisateurs de Windows les plus mal à l'aise avec les installations, une application (54Mo) directement exécutable sans rien télécharger d'autre est disponible ici : https://www.dropbox.com/sh/uijjftzdnatq0mr/AAAMyZztInBVFWI3gSPzEZ8ma?dl=0 (Mis à jour le 13/12/2019). En cas d'utilisation de ce script, il faudra remplacer dans le reste de ce mode d'emploi tous les "python be.py" par des "./be"
+Le module pyautogui s'installe aussi de cette manière sur Windows mais demande un soin supplémentaire pour les autres OS, ce qui est bien détaillé ici : https://pyautogui.readthedocs.io/en/latest/install.html.
+
+Pour les utilisateurs de Windows les plus mal à l'aise avec les installations, une application (54Mo) directement exécutable sans rien télécharger d'autre est disponible ici : [[[TODO]]]. En cas d'utilisation de ce script, il faudra remplacer dans le reste de ce mode d'emploi tous les "python be.py" par des "./be".
+
+Enfin, le script (ou plutôt le module tika, qui extrait le contenu des pdf) a besoin pour fonctionner d'une connexion internet.
 
 L'exécution du script peut provoquer quelques bugs plus exotiques, certains sont décrits dans la dernière section du README.
 
-
 # Utilisation pour la première fois
 
-Ouvrir un invite de commande dans le dossier qui contient le fichier Python, le dossier archive et éventuellement les factures pas encore logguées.
+Ouvrir un invite de commande dans le dossier qui contient le fichier Python, le dossier archive et éventuellement les factures pas encore loguées.
 
 Taper dans l'invite de commande :
 
 python be.py archive
   
-Si un message contenant "[MainThread  ] [WARNI]  Failed to see startup log message; retrying..." s'affiche, l'ignorer, ça devrait terminer au bout de quelques secondes.
+Si un message du type "[MainThread  ] [WARNI]  Failed to see startup log message; retrying..." s'affiche, l'ignorer, ça devrait terminer au bout de quelques secondes si la connexion internet est correcte.
 
 A l'issue, s'il n'y a pas d'appro à faire tout de suite, l'invite de commande peut être fermé. Un fichier du nom de "prix_marque.txt" a été ajouté pour chaque marque représentée par au moins une facture (Carrefour, Picard...) : il fait office de base de données des prix pour cette marque, et le script l'utilise pour comparer les prix des futures appros.
 
-Ouvrir ces fichiers texte. Les articles y sont listés avec à chaque ligne, un 0, puis le code d'article présent dans les factures (ou juste "-" si aucun code n'est spécifié, comme par exemple chez Cora), puis le prix unité, puis le nom de l'article. Parcourir rapidement cette liste d'articles et remplacer les 0 en début de ligne par des 1 pour tous les articles que vous ne souhaitez pas logguer lors d'une appro (des produits en open, par exemple, produit d'entretien, papier cuisson, sel, épices...). Cela permettra au script d'ignorer ces articles à l'avenir.
+Ouvrir ces fichiers texte. Les articles y sont listés avec à chaque ligne, un 0, puis le code-barres s'il est présent dans les factures (ou juste "-" sinon), puis le prix unité ou prix au kilogramme, puis le nom de l'article. Parcourir rapidement cette liste d'articles et remplacer les 0 en début de ligne par des 1 pour tous les articles que vous ne souhaitez pas logguer lors d'une appro (des produits en open, par exemple, produit d'entretien, papier cuisson, sel, épices...). Cela permettra au script d'ignorer ces articles à l'avenir.
 
-A part pour le premier caractère de chaque ligne, ces fichiers ne doivent pas être modifiés. En revanche il est à votre charge de les copier quelque part (en faire une sauvegarde) pour vous prémunir d'une utilisation erronée du script qui viendrait à modifier de manière non souhaitée ces fichiers.
+A part pour le premier caractère de chaque ligne, ces fichiers ne doivent pas être modifiés.
 
 _Dans des versions précédentes, il fallait lancer la commande une fois pour chaque ancienne facture et veiller à faire cela dans l'ordre chronologique des factures. Il fallait aussi fournir en argument le nom du supermarché d'où venait chaque facture. Aujourd'hui, le script détecte tout seul la marque et la date, c'est pourquoi il suffit de tout mettre dans un dossier "archive". Le script triera tout seul les factures par date pour avoir dans la base de données finale les prix les plus actuels de chaque aliment._
 
-# Utilisation pour une appro sans scanner
+Dans le cas de Carrefour et Auchan, l'auto-appro est rendue possible mais logue les articles grâce à leurs codes-barres. Si ce n'est pas déjà fait, il faudra donc faire connaître à Chocapix tous les codes-barres des articles que vous avez logués pour ces marques. Comme Chocapix ne permet pas d'ajouter un code-barre pour un article déjà logué, il faudra créer autant de nouveaux articles et faire autant de regroupements que de code-barres manquant. Pour aider dans cette tâche, on pourra utiliser le fichier texte associé à la marque, qui liste justement tous les articles que vous avez commandés auprès de cet approvisionneur.
 
-Lire toute la section avant de commencer à effectuer les opérations décrites.
+# Utilisation pour une auto-appro Carrefour ou Auchan
 
-Ouvrir un invite de commande dans le dossier qui contient le fichier Python et la facture. Ouvrir Chocapix. Diviser l'écran en mosaïque de façon à voir à la fois l'invite de commande (pas besoin de plus d'un tiers de l'écran) et Chocapix. Etre prêt à logguer l'appro en s'assurant que la case pour rentrer le code du premier aliment et la case qui apparaîtra pour la quantité sont à portée de souris.
+Les auto-appros sont encore en stade expérimental. Elles ont été testées avec succès sous Chrome et Opera, ne fonctionnent pour l'instant que partiellement sous Safari et Firefox (il faut être sûr d'avoir remplacé le 0 par un 1 pour tous les articles "cachés" par Chocapix) et ne marche pas du tout avec Edge.
+
+Ouvrir un invite de commande dans le dossier qui contient le fichier Python et la facture. Ouvrir Chocapix et cliquer sur "loguer une appro".
 
 Pour lancer le script sur une facture qui s'appelle "facture.pdf", taper :
 
 python be.py facture.pdf appro
 
-Si un message contenant "[MainThread  ] [WARNI]  Failed to see startup log message; retrying..." s'affiche, l'ignorer.
+Si un message du type "[MainThread  ] [WARNI]  Failed to see startup log message; retrying..." s'affiche, l'ignorer, ça devrait terminer au bout de quelques secondes si la connexion internet est correcte.
 
-Quelques instants après le lancement de la commande et juste après un compte à rebours, des lignes vont commencer à s'afficher dans l'invite de commande. Au bout de quelques secondes, cela peut ressembler à :
+Quelques instants après le lancement de la commande une fenêtre va apparaître vous demandant de cliquer sur la case pour les noms d'aliments du menu loggage. C'est parce que ce script n'accède pas directement à Chocapix, et se contente de prendre le contrôle de votre clavier et souris pour faire toutes les opérations d'un loggage habituel, mais beaucoup plus rapidement. Et pour savoir où se trouve la case pour les noms d'article, une bonne façon est de vous demander d'amener la souris dessus et de cliquer.
 
-X:\Chemin\Du\Dossier> python be.py 06.11_facture.pdf appro
+A ce moment, il faut laisser le script remplir automatiquement les codes-barres, quantités, et prix si ils ont changé. Au cas où quelque chose ne tourne pas bien au cours de cette phase (scrolls, sélection de beaucoup de texte de la page, ou même déconnexion en sont des symptômes), vous pouvez l'arrêter simplement en bougeant la souris. Une fenêtre s'ouvre alors pour confirmer si le mouvement de la souris était volontaire, et si oui le script s'arrête. A noter qu'une brève apparition (puis disparition) de la fenêtre de création d'une fiche d'aliment ou de l'encart rouge signalant une tentative de loguer un article caché ne constitue PAS un comportement inattendu du script, puisque le script exploite ces particularités pour détourner les quantité et prix des aliments non loguables ailleurs, pour éviter de loguer ces articles. Les astuces employées pour cela dépendent fortement de la taille de la fenêtre du navigateur dans lequel Chocapix est ouvert. Ainsi il est recommandé de choisir le zoom standard et d'ouvrir son navigateur en plein écran pour éviter les problèmes.
 
-Début dans 3...2...1...
+Si après plusieurs essais (au moins 3) l'auto-appro continue de produire des comportements bizarres, c'est peut-être que votre navigateur ou votre connexion internet ne permet pas à Chocapix de suivre les instructions envoyées par le script. Par défaut une instruction est envoyée toutes les 0.02 secondes. Pour augmenter ce temps selon vos besoins, vous pouvez par exemple saisir la commande "python be.py facture.pdf appro pause=0.03".
 
-3245390089854 - 12 &nbsp;&nbsp;&nbsp;&nbsp;Aliment acheté en grande quantité
+A l'issue de cette phase de remplissage automatique, l'invite de commande peut être fermé. Un compte-rendu au format .txt est créé, listant tous les changements de prix, à l'exception des articles signalés comme non loggables, ainsi que les articles achetés pour la première fois (en tout cas première fois parmi les factures que le script a vues). Dans ce cas, il n'a pas été logué plus tôt par le script et il va falloir le loguer à la main maintenant. Il n'y a aucun danger à modifier ou supprimer ce compte-rendu, après la fin de l'appro sa vocation est purement informative. Le respo news peut par exemple recopier les changements importants dans l'onglet des nouvelles afin d'informer les membres de sa section sur les bonnes ou mauvaises surprises qui peuvent les attendre en loggant leurs aliments préférés.
 
-3270190007050 - 5 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Un autre aliment avec moins de prétention
+# Utilisation lors d'une appro Cora, Houra ou Picard
 
-3276650121533 - 4 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UN ALIMENT EN CAPS LOCK POURQUOI PAS
-  
-Chaque nouvelle ligne qui s'affiche dans cet invite de commande, correspond à un aliment déjà rencontré dans l'archive de factures (pas besoin de créer une nouvelle fiche d'aliment, donc). Il y a d'abord le code de l'aliment dans la facture, sa quantité livrée, et son nom. Si la facture ne spécifie aucun code-barres, ce sera juste "quantité nom". Les lignes ont été triées de façon à afficher les articles par ordre décroissant de quantité.
+Dans le cas de Cora, Houra ou Picard, il n'y a pas de codes-barres dans les factures. Comme les noms connus par Chocapix ne correspondent pas exactement aux noms des articles dans les factures, la première suggestion de Chocapix peut ne pas être la bonne, donc le script ne peut pas vraiment rien remplir pour la case du nom de l'article. Le script n'est donc d'aucune aide pour la majorité du loggage de l'appro. En revanche il reste capable de donner la liste des articles qui ont changé de prix, ce qui peut déjà faire gagner un peu de temps.
 
-Pour logguer un aliment que le script vient d'afficher, il n'y a pas besoin de copier le code (ou à défaut, le nom), c'est fait automatiquement : il ne reste plus qu'à le coller dans Chocapix. Il faut simplement le faire avant que la prochaine ligne s'affiche, sinon un nouveau code (ou nom) prend la place de l'ancien dans le presse-papier. De cette manière, avec un ordinateur à souris, la main gauche reste constamment au dessus de Ctrl et V (sauf pour une minorité d'articles achetés en grande quantité, passée dès les premières lignes), et la main droite contrôle une souris dont le curseur ne sort jamais de Chocapix.
+La meilleure chose à faire est de scanner les codes-barres de tous les articles livrés (sans scanner, il va falloir faire chauffer les touches Ctrl C et V, comme d'habitude), sans regarder si les prix ont changé, puis une fois que c'est fini, lancer le script sur la facture pour obtenir la liste des prix qui ont changé, et mettre à jour à la main ces prix dans Chocapix.
 
-Que faire si je rate une ou plusieurs lignes ? Pas de panique, le script peut être mis en pause en tapant n'importe quelle lettre de l'alphabet dans l'invite de commande. Cela doit vous laisser autant de temps que nécessaire pour récupérer le code (ou nom) manqué et le copier coller manuellement vers Chocapix. Quand le retard est rattrapé, appuyer sur Entrer dans l'invite de commande et le script continue. Cela peut ressembler à :
-
-D:\Alexandre\Chocapix> python be.py 06.11_facture.pdf appro
-
-2019-11-24 14:45:23,856 [MainThread  ] [WARNI]  Failed to see startup log message; retrying...
-
-Début dans 3...2...1...
-
-3245390089854 - 12 &nbsp;&nbsp;&nbsp;&nbsp;Aliment acheté en grande quantité
-
-3270190007050 - 5 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Un autre aliment avec moins de prétention
-
-3276650121533 - 4 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;UN ALIMENT EN CAPS LOCK POURQUOI PAS
-
-5601019001030 - 4 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Aliment&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<- Les lignes affichées ne sont pas effacées au fur et à mesure._
-
-Script mis en pause. Appuyer sur Entrer pour le poursuivre.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<- Cela permet de copier coller à la main ce qu'on a manqué_
-
-g &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;_<- la lettre tapée pour mettre en pause le script peut s'afficher. Cela n'a aucune importance._
-
-Début dans 3...2...1...
-
-3166291458405 - 3 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Aliment
-
-...
-
-Quand il ne reste plus que des articles achetés en quantité 1, le script lance un autre compte à rebours pour signaler que les lignes vont se succéder beaucoup plus rapidement, puisqu'il n'y a plus besoin de bouger la souris vers la quantité désormais.
- 
-Par défaut le temps donné pour coller un nombre avant que le prochain prenne sa place est :
-
-- 5 secondes maximum dans tous les cas.
-
-- de 3 à 5 secondes, pour une quantité entre 2 et 6 (3 secondes pour 2, +0,5 par unité supplémentaire)
-
-- 1,25 secondes pour les articles en quantité 1.
-
-Pour changer ces temps de manière ponctuelle pour une seule appro, on pourra à la place de la commande vue plus haut écrire :
-
-python be.py 06.11_facture.pdf appro set_pause a b c d
-
-Où a b c et d (entiers ou à virgule) remplaceront respectivement 1,25, 3, 0,5 et 5. Choisissez les temps idéaux pour terminer l'appro le plus rapidement possible sans avoir à pauser trop souvent le script. Sans souris, le mieux est d'utiliser les raccourcis clavier (shift et ctrl+shift pour passer de la case code-barres à la case quantité). Pour les utilisateurs de pavé tactile, l'expérience montre que "set_pause 1,25 4 0,25 5" est plus adapté. Dans le cas des factures sans code-barres (comme celles de Cora ou Intermarché), comme c'est le nom qui sera collé dans la barre d'aliment de Chocapix et qu'il peut y avoir des différences avec le nom connu par Chocapix, qui va proposer une liste de suggestions, il faut se réserver un temps supplémentaire à chaque article pour choisir la bonne suggestion et cliquer dessus. Cela n'a pas encore été testé mais "set_pause 2.5 5 0,25 7" semble plus raisonnable.
-
-_Ces paramètres peuvent aussi être changés définitivement en modifiant le code du fichier Python : les valeurs y sont définies dans les premières lignes après les imports de modules._
-
-A la fin de cette première phase, le script affiche dans l'invite de commande une liste d'articles dont le prix a changé. Ces articles ont déjà été loggués, il suffit de modifier leur prix manuellement.
-
-Enfin, le script affiche dans l'invite de commande la liste des nouveaux articles, jamais rencontrés. Par "jamais rencontré" il faut comprendre "jamais rencontré par le script". En effet si la section "Usage pour la première fois" n'a pas été suivie ou si des factures sont manquantes, le script peut ne pas connaître un article qui a bien été loggué dans Chocapix il y a longtemps. Dans ce cas, il n'a pas été cité plus haut par le script et il va falloir le logguer à la main maintenant.
-
-C'est terminé. L'invite de commande peut être fermé. A l'issue de l'appro, un compte-rendu au format .txt est créé, listant tous les changements de prix, y compris des articles non loggables. Il n'y a aucun danger à modifier ou supprimer ce compte-rendu, sa vocation est purement informative. Le respo news peut par exemple recopier les changements importants dans l'onglet des nouvelles afin d'informer les membres de sa section sur les bonnes ou mauvaises surprises qui peuvent les attendre en loggant leurs aliments préférés.
-
-Il est à noter que des articles inconnus de Chocapix peuvent être donnés par le script lors de la première phase, au milieu des articles déjà rencontrés. Cela arrivera pour les produits d'entretien ou autres aliments qui ne se logguent pas, que les respos appro n'ont jamais fait connaître à Chocapix, mais que le script a quand même ajouté à sa base de données. Vous pouvez simplement ignorer la ligne et attendre la suivante. Mais alors cet article sera encore donné par le script la prochaine fois qu'il sera acheté. Pour ne plus jamais le voir, deux solutions. Soit à la fin de l'appro vous cherchez l'article dans la base de données (prix_marque.txt) et vous remplacez le 0 au début de sa ligne par un 1. Soit vous mettez en pause le script, et avant d'appuyer sur Entrer pour mettre fin à la pause, vous écrivez "whitelist xxx" où xxx est le code (ou à défaut, le nom complet) de l'aliment à ne jamais logguer.
-
-# Utilisation pour une appro avec scanner
-
-Dans le cas de Carrefour, Auchan et Picard, qui font figurer un code devant chaque article sur leurs factures, il est plus rapide de ne pas utiliser le scanner du tout et donc de se rapporter exclusivement à la section précédente. En revanche pour Cora, le fait de devoir passer un temps supplémentaire pour chaque article à choisir parmi les suggestions de noms que Chocapix fait au moment où on tape un nom dans la barre d'aliments peut potentiellement rendre l'utilisation du scanner préférable, si ces suggestions sont vraiment différentes des noms des aliments sur la facture. Dans ce cas la meilleure chose à faire est de scanner les code-barres de tous les articles livrés sans regarder si les prix ont changé, puis une fois que c'est fini, ouvrir un invite de commande et si la facture s'appelle "facture.pdf", taper :
+Pour obtenir la liste de tous les articles qui ont changé de prix dans une facture qui s'appelle "facture.pdf", ouvrir un invite de commande et taper :
 
 python be.py facture.pdf
 
 C'est à dire la même chose qu'à la section précédente mais sans le mot-clé "appro". Si un message contenant "[MainThread  ] [WARNI]  Failed to see startup log message; retrying..." s'affiche, l'ignorer.
 
-Un fichier .txt est créé avec un nom du type "compte-rendu_marque_date.txt" où sont listés tous les articles dont le prix a changé, avec le détail avant/après de ces changements. Le respo appro peut alors utiliser ce compte-rendu pour mettre à jour les prix dans Chocapix. Après cela, il n'y a aucun danger à modifier ou supprimer ce compte-rendu, sa vocation devient purement informative. Le respo news peut par exemple recopier les changements importants dans l'onglet des nouvelles afin d'informer les membres de sa section sur les bonnes ou mauvaises surprises qui peuvent les attendre en loggant leurs aliments préférés.
+Juste après, un fichier .txt est créé avec un nom du type "compte-rendu_marque_date.txt". C'est là que sont listés les changements de prix.
 
 # Utilisation non attendue du script
 Plusieurs utilisations qui ne rentrent dans aucun des deux cadres cités plus haut (mise à niveau avec l'archive, et appro) peuvent être faites de ce script. Fidèle à la philisophie de Python, "we are all consenting adults here", la plupart de ces cas de figure ne mènent pas à une erreur et peuvent être explorés par un utilisateur curieux. En voici quelques exemples.
 
 Pour lancer le script en mode appro sur une facture qui se trouve dans le dossier archive, il suffit de faire précéder le nom de la facture par "./archive/", comme on pourrait s'y attendre. Rien n'empêche non plus de chercher des fichiers .pdf qui sont en dehors du dossier contenant le script. Il reste donc possible de lancer le script sur une vieille facture, ce qui aura pour conséquence probable de remplacer des prix actuels dans les bases de données de prix par des valeurs dépassées. Aussi, l'éventuel compte-rendu créé n'aura aucun sens puisqu'il montrera les "évolutions" de prix de cette remontée dans le temps. A utiliser avec modération, donc. Pour faire rentrer les choses dans l'ordre, on peut lancer le script sur toutes les factures de la même marque entre celle-là et la plus récente dans l'ordre chronologique, ce qui peut être fait avec la seule commande "python be.py archive".
 
-On peut reproduire le comportement du mode appro sans avoir à attendre l'affichage des numéros de série et quantités grâce à "set_pause 0 0 0 0". Cela peut être utile pour du débug.
+Il est possible d'actualiser les prix et de produire un compte-rendu en dehors du mode appro. Il suffit pour cela de ne fournir aucun des deux mots-clés appro ou archive. Ainsi, au lieu de suivre le paragraphe "Utilisation pour la première fois" à la lettre, on pourra ne mettre dans le dossier archive que les factures de plus d'un mois, et après avoir tapé "python be.py archive", on pourra appeler "python be.py facture.pdf" pour toutes ces factures passées mais récentes, que l'on n'a pas mises dans le dossier archive, et le script produira alors tous les compte-rendus des appros récentes. Le script triera ici aussi les factures par date avant de calculer les évolutions.
 
-Il est possible de surveiller les évolutions de prix et de produire un compte-rendu en dehors du mode appro. Il suffit pour cela de ne fournir aucun des deux mots-clés appro ou archive. Ainsi, au lieu de suivre le paragraphe "Utilisation pour la première fois" à la lettre, on pourra ne mettre dans le dossier archive que les factures de plus d'un mois, et après avoir tapé "python be.py archive", on pourra appeler "python be.py facture.pdf" pour toutes ces factures passées mais récentes, que l'on n'a pas mises dans le dossier archive, et le script produira alors tous les compte-rendus des appros récentes. Le script triera ici aussi les factures par date avant de calculer les évolutions.
+Il est même possible d'actualiser les prix avec une facture en particulier sans compte-rendu ni appro. Pour ça, il faut utiliser le mot-clé "archive" et écrire le nom de la facture. Dans le code du script, le mot-clé archive vérifie d'abord si une facture a été donnée en argument et sinon traite toutes les factures du dossier archive.
 
-Il est même possible de simplement surveiller les évolutions de prix sur une facture en particulier sans compte-rendu ni appro. Pour ça, il faut utiliser le mot-clé "archive" et écrire le nom de la facture. Dans le code du script, le mot-clé archive vérifie d'abord si une facture a été donnée en argument et sinon traite toutes les factures du dossier archive.
+Il existe un dernier mot-clé, "noedit", utile si au contraire vous souhaitez produire un compte-rendu sans modifier la base de données, dans un contexte de débug par exemple.
 
-Dans le mode appro, donner en argument le nom de la facture sert à dire au script quel fichier regarder pour mettre à jour sa base de données des prix. Le mode archive ne fait que lancer la fonction principale du script en retirant le baratin de l'appro, sur la facture donnée en argument, ou à défaut sur la liste de toutes les factures du dossier "archive". Suivant ce principe, il est possible de donner en arguments plusieurs factures à la fois. Elles seront alors toutes traitées les unes à la suite des autres.
+Donner en argument le nom de la facture sert à dire au script quel fichier regarder pour mettre à jour sa base de données des prix. Le mode archive ne fait que lancer la fonction principale du script sur la facture donnée en argument, ou à défaut sur la liste de toutes les factures du dossier "archive". Suivant ce principe, il est possible de donner en arguments plusieurs factures à la fois. Elles seront alors toutes traitées les unes à la suite des autres, triées par ordre chronologique.
 
 Attention à ne pas renommer le dossier "archive" en autre chose et espérer que remplacer le mot-clé "archive" par le nouveau nom de dossier suffira. Le mot-clé n'est pas nommé d'après le dossier, et le nom du dossier que le script tentera d'explorer est hard-codé comme devant être "archive".
 
-Appuyer sur Ctrl+C dans l'invite de commande arrête totalement le script. Mais comme les changements de prix ne sont enregistrés dans une base de donnée qu'au dernier moment à la fin de l'exécution du script, ces changements ne seront pas encore enregistrés au moment du Ctrl+C fautif. Il n'est donc pas primordial de finir sur le champ le loggage de l'appro quand il a été commencé. De même, si Chocapix plante en plein milieu de l'appro, on peut sans crainte relancer le script après un Ctrl+C, les changements de prix seront encore signalés et les nouveaux articles seront encore considérés nouveaux. L'arrêt par Ctrl+C ne se produit que si aucun texte n'est sélectionné : cela ne concerne donc pas le fait de copier manuellement un nombre pendant une pause du script.
+Bouger la souris en mode appro avec Carrefour ou Auchan ou appuyer sur Ctrl+C dans l'invite de commande arrête totalement le script. Comme les changements de prix ne sont enregistrés dans une base de donnée qu'au dernier moment à la fin de l'exécution du script, ces changements ne seront pas encore enregistrés au moment de l'arrêt. Donc si Chocapix plante en plein milieu de l'appro, on peut sans crainte relancer le script, les changements de prix seront encore signalés et les nouveaux articles seront encore considérés nouveaux.
 
 # Quelques messages d'erreur exotiques
 - RuntimeError: Unable to start Tika server. (après un traceback et un message d'erreur contenant Unable to run java; is it installed?) Ce problème rencontré avec un WSL Ubuntu a été résolu en installant Java. Pour plus de détails, voir https://stackoverflow.com/questions/36478741/installing-oracle-jdk-on-windows-subsystem-for-linux. Sur un Windows 10 où le même problème a été rencontré et où Java était déjà installé, la solution était d'ajouter le dossier bin de Java au PATH.
-- Not Implemented Error: Pyperclip could not find a copy/paste mechanism for your system. Ce problème rencontré sous Ubuntu a été résolu en installant un mécanisme de copier/coller. Pour plus de détails, voir https://pyperclip.readthedocs.io/en/latest/introduction.html#not-implemented-error.
 - AttributeError: 'bytes' object has no attribute 'close'. Ce problème rencontré avec Windows 10 a été résolu en cherchant directement la ligne du module tika pointée par le message d'erreur complet, et en la supprimant. Il s'agit d'une erreur du côté de tika qui a été corrigée depuis. Pour plus de détails, voir https://github.com/chrismattmann/tika-python/pull/253/files.
 
 # Fonctionnalités à venir
 - Prise en charge de Intermarché (?)
-- Prise ne charge des récapitulatifs de commande de Carrefour
+- Prise en charge des récapitulatifs de commande de Carrefour
