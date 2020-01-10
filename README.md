@@ -115,9 +115,10 @@ Attention à ne pas renommer le dossier "archive" en autre chose et espérer que
 
 Bouger la souris en mode appro avec Carrefour ou Auchan ou appuyer sur Ctrl+C dans l'invite de commande arrête totalement le script. Comme les changements de prix ne sont enregistrés dans une base de donnée qu'au dernier moment à la fin de l'exécution du script, ces changements ne seront pas encore enregistrés au moment de l'arrêt. Donc si Chocapix plante en plein milieu de l'appro, on peut sans crainte relancer le script, les changements de prix seront encore signalés et les nouveaux articles seront encore considérés nouveaux.
 
-# Quelques messages d'erreur exotiques
+# Quelques bugs ou messages d'erreur exotiques
 - RuntimeError: Unable to start Tika server. (après un traceback et un message d'erreur contenant Unable to run java; is it installed?) Ce problème rencontré avec un WSL Ubuntu a été résolu en installant Java. Pour plus de détails, voir https://stackoverflow.com/questions/36478741/installing-oracle-jdk-on-windows-subsystem-for-linux. Sur un Windows 10 où le même problème a été rencontré et où Java était déjà installé, la solution était d'ajouter le dossier bin de Java au PATH.
 - AttributeError: 'bytes' object has no attribute 'close'. Ce problème rencontré avec Windows 10 a été résolu en cherchant directement la ligne du module tika pointée par le message d'erreur complet, et en la supprimant. Il s'agit d'une erreur du côté de tika qui a été corrigée depuis. Pour plus de détails, voir https://github.com/chrismattmann/tika-python/pull/253/files.
+- L'ordinateur redémarre dès que le script commence à s'exécuter. Ce problème rencontré avec un MacOS 10.18 s'explique par le fait que l'autorisation de prendre le contrôle du clavier n'avait pas été donnée à Python. La fenêtre pour régler ces autorisations peut apparaître en tapant dans un shell python >>> import pyautogui as g; g.write("a")
 
 # Fonctionnalités à venir
 - Prise en charge de Intermarché (?)
