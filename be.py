@@ -266,9 +266,9 @@ def alert_start():
     gui.alert("A partir du moment où vous fermerez cette fenêtre, vous aurez 3 secondes pour aller dans le menu appro, scroll en haut, cliquer au milieu de la case du nom d'aliment, en évitant de faire sortir la souris en dehors de la case juste après. Au bout des 3 secondes, l'appro commencera.\nPour rappel, le script s'arrête par mouvement de la souris.", "Début de l'appro")
     sleep(3)
 
-def alert_end():
+def confirm_end():
     # Prévenir de la fin de la partie automatique de l'appro
-    gui.alert("L'auto-appro est terminée, l'invite de commande peut être fermé. Les prix ont déjà été mis à jour.\nIl reste encore à ajouter manuellement les nouveaux articles. Ils sont listés dans le compte-rendu de l'appro.", "Fin de l'auto-appro")
+    return "OK" == gui.confirm("L'auto-appro est terminée, l'invite de commande peut être fermé.\nLes nouveaux prix ont déjà été changés sur Chocapix, et seront enregistrés dans la base de données du script avec le bouton OK.\nIl reste encore à ajouter manuellement les nouveaux articles. Ils sont listés dans le compte-rendu de l'appro.\nPour annuler les modifications, appuyer sur Annuler.", "Fin de l'auto-appro")
 
 def pause_script(newpos, posref):
     if newpos != posref:
@@ -346,7 +346,7 @@ def update_prices(parsedfile):
                 prices[key] = float(price)
                 names[key] = name
                 codes[key] = code
-                if wl == "1":
+                if wl >= "1":
                     hidden.add(key)
     except:
         pass
@@ -372,8 +372,8 @@ def update_prices(parsedfile):
         codes[article.ref] = article.sernumber
         prices[article.ref] = article.price
         names[article.ref] = article.name
-    if appro and brand in fullauto:
-        alert_end()
+    if appro and brand in fullauto and not confirm_end():
+        modif = False
 
     # Lister et créer un compte rendu des changements de prix...
     if not archive:
@@ -387,22 +387,25 @@ def update_prices(parsedfile):
                 cr.write("\nNouveaux articles :\n")
             for article in newarticles:
                 cr.write(f"{article}\n")
+
     # Réécrire une base de données des prix à la place de l'ancienne
-    with open(f"prix_{brand}.txt", "w", encoding="utf-8") as newfile:
-        lines = []
-        for ref, price in prices.items():
-            lines.append(f"{1*(ref in hidden)} {codes[ref]} {price} {names[ref]}\n")
-        lines.sort(key=lambda st: st[2:])  # ça sert qu'à aider le débug
-        for line in lines:
-            newfile.write(line)
+    if edit:
+        with open(f"prix_{brand}.txt", "w", encoding="utf-8") as newfile:
+            lines = []
+            for ref, price in prices.items():
+                lines.append(f"{1*(ref in hidden)} {codes[ref]} {price} {names[ref]}\n")
+            lines.sort(key=lambda st: st[2:])  # ça sert qu'à aider le débug
+            for line in lines:
+                newfile.write(line)
 
 ### Recueil des arguments donnés dans le shell, gestion des erreurs
 
 if __name__ == "__main__":
     def main():
-        global appro, archive
+        global appro, archive, edit
         appro = False
         archive = False
+        edit = True
 
         entrypoint = update_prices
         files = []
@@ -414,6 +417,14 @@ if __name__ == "__main__":
                 appro = True
             elif opt == "archive":
                 archive = True
+            elif opt == "noedit":
+                edit = False
+            elif opt.startswith("pause="):
+                custom_pause = float(opt[6:].replace(",", "."))
+                if custom_pause < 0.02 or custom_pause > 0.1:
+                    print("Il est recommandé de choisir une pause entre 0.02 et 0.1 seconde.")
+                    sys.exit(1)
+                gui.PAUSE = custom_pause
             else:
                 print(f"Option \"{sys.argv[1]}\" inconnue.")
                 sys.exit(1)
@@ -438,8 +449,8 @@ if __name__ == "__main__":
                 print("\nAucune facture n'a été donnée en argument.")
         except KeyboardInterrupt:
             print("\nScript interrompu définitivement.")
-        except UnboundLocalError:
-            print("\nMauvaise syntaxe. Exemples de syntaxe :\npython be.py archive\npython be.py 21.10_facture.pdf appro")
+        #except UnboundLocalError:
+        #    print("\nMauvaise syntaxe. Exemples de syntaxe :\npython be.py archive\npython be.py 21.10_facture.pdf appro")
         except FileNotFoundError:
             print("\nLa facture est introuvable. Il faut qu'elle soit dans le même dossier que le script. Vérifier le nom exact de la facture.")
         except (KeyError, NotImplementedError) as brand:
@@ -452,5 +463,6 @@ if __name__ == "__main__":
         end_time = time()
 
         print(f"\nTemps écoulé : {end_time-start_time} secondes\n")
+        sys.exit(0)
 
     main()
