@@ -38,8 +38,6 @@ Si cela ne marche pas, c'est probablement que la version utilisée de Python est
 
 Le module pyautogui s'installe aussi de cette manière sur Windows mais demande un soin supplémentaire pour les autres OS, ce qui est bien détaillé ici : https://pyautogui.readthedocs.io/en/latest/install.html.
 
-Pour les utilisateurs de Windows les plus mal à l'aise avec les installations, une application (54Mo) directement exécutable sans rien télécharger d'autre est disponible ici : [[[TODO]]]. En cas d'utilisation de ce script, il faudra remplacer dans le reste de ce mode d'emploi tous les "python be.py" par des "./be".
-
 Enfin, le script (ou plutôt le module tika, qui extrait le contenu des pdf) a besoin pour fonctionner d'une connexion internet.
 
 L'exécution du script peut provoquer quelques bugs plus exotiques, certains sont décrits dans la dernière section du README.
@@ -59,8 +57,6 @@ A l'issue, s'il n'y a pas d'appro à faire tout de suite, l'invite de commande p
 Ouvrir ces fichiers texte. Les articles y sont listés avec à chaque ligne, un 0, puis le code-barres s'il est présent dans les factures (ou juste "-" sinon), puis le prix unité ou prix au kilogramme, puis le nom de l'article. Parcourir rapidement cette liste d'articles et remplacer les 0 en début de ligne par des 1 pour tous les articles que vous ne souhaitez pas logguer lors d'une appro (des produits en open, par exemple, produit d'entretien, papier cuisson, sel, épices...). Cela permettra au script d'ignorer ces articles à l'avenir.
 
 A part pour le premier caractère de chaque ligne, ces fichiers ne doivent pas être modifiés.
-
-_Dans des versions précédentes, il fallait lancer la commande une fois pour chaque ancienne facture et veiller à faire cela dans l'ordre chronologique des factures. Il fallait aussi fournir en argument le nom du supermarché d'où venait chaque facture. Aujourd'hui, le script détecte tout seul la marque et la date, c'est pourquoi il suffit de tout mettre dans un dossier "archive". Le script triera tout seul les factures par date pour avoir dans la base de données finale les prix les plus actuels de chaque aliment._
 
 Dans le cas de Carrefour et Auchan, l'auto-appro est rendue possible mais logue les articles grâce à leurs codes-barres. Si ce n'est pas déjà fait, il faudra donc faire connaître à Chocapix tous les codes-barres des articles que vous avez logués pour ces marques. Comme Chocapix ne permet pas d'ajouter un code-barre pour un article déjà logué, il faudra créer autant de nouveaux articles et faire autant de regroupements que de code-barres manquant. Pour aider dans cette tâche, on pourra utiliser le fichier texte associé à la marque, qui liste justement tous les articles que vous avez commandés auprès de cet approvisionneur.
 
