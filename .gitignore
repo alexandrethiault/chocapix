@@ -1,0 +1,7 @@
+# Ignorer tout
+/*
+
+# Sauf ces fichiers
+!be.py
+!README.md
+!.gitignore

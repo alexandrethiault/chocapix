@@ -420,21 +420,17 @@ if __name__ == "__main__":
             elif opt == "noedit":
                 edit = False
             elif opt.startswith("pause="):
-                custom_pause = float(opt[6:].replace(",", "."))
-                if custom_pause < 0.02 or custom_pause > 0.1:
-                    print("Il est recommandé de choisir une pause entre 0.02 et 0.1 seconde.")
-                    sys.exit(1)
-                gui.PAUSE = custom_pause
+                gui.PAUSE = float(opt[6:].replace(",", "."))
+                if gui.PAUSE < 0.02 or gui.PAUSE > 0.1:
+                    sys.exit("Il est recommandé de choisir une pause entre 0.02 et 0.1 seconde.")
             else:
-                print(f"Option \"{sys.argv[1]}\" inconnue.")
-                sys.exit(1)
+                sys.exit(f"Option \"{sys.argv[1]}\" inconnue.")
             sys.argv.pop(1)
         if appro and archive:
-            print("appro et archive ne peuvent être utilisés en même temps")
-            sys.exit(1)
+            sys.exit("appro et archive ne peuvent être utilisés en même temps")
 
-        start_time = time()
         try:
+            start_time = time()
             if archive and not files:
                 for filename in os.listdir("archive"):
                     if filename.endswith(".pdf"):
@@ -444,25 +440,25 @@ if __name__ == "__main__":
             for parsedfile in parsedfiles:
                 entrypoint(parsedfile)
             if files:
-                print("\nBase de données des prix mise à jour." + ("" if archive else " Ecriture du compte-rendu des évolutions de prix terminée."))
+                print("\n" + ("Base de données des prix mise à jour. " if edit else "") + ("" if archive else "Ecriture du compte-rendu des évolutions de prix terminée."))
             else:
                 print("\nAucune facture n'a été donnée en argument.")
         except KeyboardInterrupt:
-            print("\nScript interrompu définitivement.")
+            sys.exit("\nScript interrompu définitivement.")
         #except UnboundLocalError:
-        #    print("\nMauvaise syntaxe. Exemples de syntaxe :\npython be.py archive\npython be.py 21.10_facture.pdf appro")
+        #    sys.exit("\n")
         except FileNotFoundError:
-            print("\nLa facture est introuvable. Il faut qu'elle soit dans le même dossier que le script. Vérifier le nom exact de la facture.")
+            sys.exit("\nLa facture est introuvable. Il faut qu'elle soit dans le même dossier que be.py. Vérifier le nom exact de la facture.")
         except (KeyError, NotImplementedError) as brand:
             if brand in brands:
-                print(f"\nLa façon de parser les factures de {brand} n'a pas encore été codée.")
+                sys.exit(f"\nLa façon de parser les factures de {brand} n'a pas encore été codée.")
             elif brand and brand[:-1] in brands and brand[-1] == "0":
-                print(f"\nAucun article n'a pu être reconnu. Il semble que {brand[:-1]} a légèrement modifié la forme de ses factures.")
+                sys.exit(f"\nAucun article n'a pu être reconnu. Il semble que {brand[:-1]} a légèrement modifié la forme de ses factures.")
             else:
-                print(f"\nLa marque de {brand} n'a pas pu être reconnue. Il peut s'agir d'une nouvelle marque (parsing pas encore implémenté) ou alors la forme de la facture a beaucoup changé (parsing à refaire).")
-        end_time = time()
-
-        print(f"\nTemps écoulé : {end_time-start_time} secondes\n")
+                sys.exit(f"\nLa marque de {brand} n'a pas pu être reconnue. Il peut s'agir d'une nouvelle marque (parsing pas encore implémenté) ou alors la forme de la facture a beaucoup changé (parsing à refaire).")
+        finally:
+            end_time = time()
+            print(f"\nTemps écoulé : {end_time-start_time} secondes.")
         sys.exit(0)
 
     main()
