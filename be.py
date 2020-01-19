@@ -459,6 +459,6 @@ if __name__ == "__main__":
         finally:
             end_time = time()
             print(f"\nTemps écoulé : {end_time-start_time} secondes.")
-        sys.exit(0)
+        #sys.exit(0)
 
     main()

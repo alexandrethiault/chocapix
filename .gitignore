@@ -3,5 +3,6 @@
 
 # Sauf ces fichiers
 !be.py
+!approhoura.py
 !README.md
 !.gitignore
