@@ -373,7 +373,7 @@ def update_prices(parsedfile):
         prices[article.ref] = article.price
         names[article.ref] = article.name
     if appro and brand in fullauto and not confirm_end():
-        modif = False
+        edit = False
 
     # Lister et créer un compte rendu des changements de prix...
     if not archive:
@@ -445,8 +445,6 @@ if __name__ == "__main__":
                 print("\nAucune facture n'a été donnée en argument.")
         except KeyboardInterrupt:
             sys.exit("\nScript interrompu définitivement.")
-        #except UnboundLocalError:
-        #    sys.exit("\n")
         except FileNotFoundError:
             sys.exit("\nLa facture est introuvable. Il faut qu'elle soit dans le même dossier que be.py. Vérifier le nom exact de la facture.")
         except (KeyError, NotImplementedError) as brand:
