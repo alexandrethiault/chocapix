@@ -3,17 +3,19 @@
 
 import os
 import sys
+import re
+import webbot
 import pyautogui as gui
 
-from tika import parser
 from time import time, sleep
+from tika import parser
 
 ### Variables globales
 
 gui.PAUSE = 0.02  # Temps entre chaque action du mode auto (>=0.02!)
 
 brands = ["carrefour", "auchan", "cora_f", "cora_r", "houra", "picard"]
-fullauto = ["carrefour", "auchan"]
+fullauto = ["carrefour", "auchan", "houra"]
 
 ### Parsing
 
@@ -23,7 +25,7 @@ keyword = {
     "auchan": "Auchan Direct",
     "cora_f": "Facture coradrive",
     "cora_r": "Récapitulatif de commande coradrive",
-    "houra": "client@houra.fr",
+    "houra": "www.houra.fr",
     "picard": "SIRET : 78493968805071"
 }
 
@@ -33,7 +35,7 @@ finddate = {
     "auchan": (lambda s: s[s.find("FACTURE N° ")+32:s.find("FACTURE N° ")+42]),
     "cora_f": (lambda s: s[s.find(", le ")+5:s.find(", le ")+15]),
     "cora_r": (lambda s: s[s.find("Livraison ")+13:s.find("Livraison ")+23]),
-    "houra": (lambda s: s[s.find("Réf. ")-12:s.find("Réf. ")-2]),
+    "houra": (lambda s: s[s.find("Ma commande du ")+15:s.find("Ma commande du ")+25]),
     "picard": (lambda s: s[s.find("DATE : ")+7:s.find("DATE : ")+17])
 }
 
@@ -54,12 +56,22 @@ is_article = {
     "auchan": (lambda line: article_with_code(13, line)),
     "cora_f": (lambda line: line and "Frais de " not in line),
     "cora_r": article_cora_r,
-    "houra": (lambda line: line.isdigit() or " " in line and line[:line.index(" ")].isdigit()),
     "picard": (lambda line: article_with_code(6, line))
 }
 
+def log_in(brand, web, auth):
+    if brand == "houra":
+        web.go_to('houra.fr')
+        for key,value in auth.items():
+            web.type(value , id=key)
+        web.press(web.Key.ENTER)
+        sleep(1)
+        web.press(web.Key.ESCAPE)
+    else:
+        raise NotImplementedError(brand)
+
 def new_parsing(filename):
-    # Pour apprendre à parser des nouvelles marques
+    # Pour apprendre à parser des nouvelles marques dont la facture est en pdf
     raw = parser.from_file(filename)
     string = raw['content']
     for line in string.splitlines():
@@ -179,15 +191,16 @@ class Article:
                 self.price = float(line[-5 + shift])
                 self.name = " ".join([wrd for wrd in line[:-7 + shift] if wrd])
         elif brand == "houra":
-            assert "Echantillon Offert" not in " ".join(line)
-            # line[0] n'est pas le code-barres
-            self.name = " ".join([wrd for wrd in line[1:-5] if wrd])
-            if ',' in line[-5]:
-                self.qty = float(line[-5].replace(',', '.'))
-            else:
-                self.qty = int(line[-5])
-            self.price = float(line[-2].replace(',', '.'))
-            self.TVA = float(line[-3].replace(',', '.'))
+            sn = line[line.index('alt="')+5:line.index('" title="')]
+            line = line[line.index('<div class="contenant">') + 23:]
+            sn += f" ({line[:line.index('<')]})"
+            self.sernumber = sn[:13]
+            self.name = sn[16:]
+            line = line[line.index('class="prix">') + 13:]
+            try:self.price = float(line[:line.index('€')].replace(',', '.'))
+            except:self.price = float(line[:line.index('&')].replace(',', '.'))
+            line = line[line.index('size="2" maxlength="3" value="') + 30:]
+            self.qty = float(line[:line.index('"')].replace(',', '.'))
         elif brand == "picard":
             # line[0] n'est pas le code-barres
             if line[-1] == "OFFERT":
@@ -259,6 +272,40 @@ def get_from_file(filename):
         i += 1
     return date, brand, articles
 
+def get_from_source(string):
+    for br in brands:
+        if keyword[br] in string:
+            brand = br
+            break
+    else:
+        raise NotImplementedError(filename)
+    try:
+        date = stddate(finddate[brand](string))
+    except:
+        raise NotImplementedError(filename)
+    articles = []
+    if brand == "houra":
+        for m in re.finditer('<div class="zonePhoto">', string):
+            articles.append(Article(string[m.start():m.start()+5000], "houra"))
+    else:
+        raise NotImplementedError(filename)
+    return date, brand, articles
+
+def get_from_sourcefile(filename):
+    lines = []
+    with open(filename, "r", encoding="utf-8") as f:
+        for line in f.readlines(): lines.append(line)
+    return get_from_source('\n'.join(lines))
+
+def get_from_web(idPanier): #articles = get_from_web(55006015)
+    auth = {'Email': input("Email ? "), 'Pass': input("Mot de passe ? "), "CPClient": "91120"}
+    web = webbot.Browser()
+    log_in("houra", web, auth)
+    web.go_to(f"https://www.houra.fr/cpt/index.php?c=ancienne-commande&idPanier={idPanier}")
+    page_source = web.get_page_source()
+    web.close_current_tab()
+    return get_from_source(page_source)
+
 ### Affichages et prise de contrôle du clavier pour loguer, que si appro = True
 
 def alert_start():
@@ -277,7 +324,7 @@ def pause_script(newpos, posref):
             gui.press('pageup')
             sleep(0.5)
             gui.moveTo(posref[0], posref[1])
-            gui.click() #
+            gui.click()
             sleep(0.5)
         else:
             raise KeyboardInterrupt
@@ -324,6 +371,7 @@ def group_by_sernum(articles):
     return list(ans.values())
 
 def update_prices(parsedfile):
+    global edit
     date, brand, articles = parsedfile
     if not articles:
         raise NotImplementedError(brand+"0")
@@ -331,7 +379,6 @@ def update_prices(parsedfile):
         brand = brand[:-2]
 
     # Récupérer les données de la base de données des prix si elle existe
-    global prices, hidden
     codes = {}
     prices = {}
     names = {}
@@ -379,6 +426,8 @@ def update_prices(parsedfile):
     if not archive:
         with open(f"compte-rendu_{brand}_{date}.txt", "w") as cr:
             cr.write("--- Fichier généré automatiquement ---\n")
+            if brand == "houra":
+                cr.write("\nRappel : pour Houra, les prix sont donnés à la quantité reçue, jamais au kg ou au L.\n")
             if newprices:
                 cr.write("\nEvolutions de prix :\n")
             for (former_price, article) in newprices:
@@ -408,11 +457,14 @@ if __name__ == "__main__":
         edit = True
 
         entrypoint = update_prices
-        files = []
+        pdffiles = []
+        txtfiles = []
         while len(sys.argv) > 1:
             opt = sys.argv[1]
             if opt.endswith(".pdf"):
-                files.append(opt)
+                pdffiles.append(opt)
+            elif opt.endswith(".txt"):
+                txtfiles.append(opt)
             elif opt == "appro":
                 appro = True
             elif opt == "archive":
@@ -431,15 +483,18 @@ if __name__ == "__main__":
 
         try:
             start_time = time()
-            if archive and not files:
+            if archive and not pdffiles+txtfiles:
                 for filename in os.listdir("archive"):
                     if filename.endswith(".pdf"):
-                        files.append("./archive/"+filename)
-            parsedfiles = [get_from_file(filename) for filename in files]
+                        pdffiles.append("./archive/"+filename)
+                    elif filename.endswith(".txt"):
+                        txtfiles.append("./archive/"+filename)
+            parsedfiles = [get_from_file(filename) for filename in pdffiles]
+            parsedfiles += [get_from_sourcefile(filename) for filename in txtfiles]
             parsedfiles.sort()
             for parsedfile in parsedfiles:
                 entrypoint(parsedfile)
-            if files:
+            if pdffiles+txtfiles:
                 print("\n" + ("Base de données des prix mise à jour. " if edit else "") + ("" if archive else "Ecriture du compte-rendu des évolutions de prix terminée."))
             else:
                 print("\nAucune facture n'a été donnée en argument.")
