@@ -4,7 +4,7 @@
 import os
 import sys
 import re
-import webbot
+#import webbot  # Utile que pour la fonctionnalité abandonnée get_from_web
 import pyautogui as gui
 
 from time import time, sleep
@@ -59,6 +59,7 @@ is_article = {
     "picard": (lambda line: article_with_code(6, line))
 }
 
+"""
 def log_in(brand, web, auth):
     if brand == "houra":
         web.go_to('houra.fr')
@@ -69,6 +70,7 @@ def log_in(brand, web, auth):
         web.press(web.Key.ESCAPE)
     else:
         raise NotImplementedError(brand)
+"""
 
 def new_parsing(filename):
     # Pour apprendre à parser des nouvelles marques dont la facture est en pdf
@@ -297,6 +299,7 @@ def get_from_sourcefile(filename):
         for line in f.readlines(): lines.append(line)
     return get_from_source('\n'.join(lines))
 
+"""
 def get_from_web(idPanier): #articles = get_from_web(55006015)
     auth = {'Email': input("Email ? "), 'Pass': input("Mot de passe ? "), "CPClient": "91120"}
     web = webbot.Browser()
@@ -305,6 +308,7 @@ def get_from_web(idPanier): #articles = get_from_web(55006015)
     page_source = web.get_page_source()
     web.close_current_tab()
     return get_from_source(page_source)
+"""
 
 ### Affichages et prise de contrôle du clavier pour loguer, que si appro = True
 
@@ -464,6 +468,8 @@ if __name__ == "__main__":
             if opt.endswith(".pdf"):
                 pdffiles.append(opt)
             elif opt.endswith(".txt"):
+                if opt.startswith("prix_"):
+                    sys.exit("Les noms de la forme prix_xxx.txt sont réservés et ne peuvent pas être donnés en argument. Si c'était le nom du fichier contenant le code-source HTML de la liste des articles achetés, merci de renommer ce fichier.")
                 txtfiles.append(opt)
             elif opt == "appro":
                 appro = True
