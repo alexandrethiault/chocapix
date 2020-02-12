@@ -197,6 +197,7 @@ class Article:
             line = line[line.index('<div class="contenant">') + 23:]
             sn += f" ({line[:line.index('<')]})"
             self.sernumber = sn[:13]
+            assert self.sernumber.isdigit()
             self.name = sn[16:]
             line = line[line.index('class="prix">') + 13:]
             try:self.price = float(line[:line.index('€')].replace(',', '.'))

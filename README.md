@@ -67,7 +67,7 @@ Dans le cas de Carrefour, Auchan et Houra, l'auto-appro est rendue possible mais
 
 # Utilisation pour une auto-appro Carrefour, Auchan ou Houra
 
-Les auto-appros sont encore en stade expérimental. Elles ont été testées avec succès sous Chrome et Opera, ne fonctionnent pour l'instant que partiellement sous Safari et Firefox (il faut être sûr d'avoir remplacé le 0 par un 1 pour tous les articles "cachés" par Chocapix) et ne marche pas du tout avec Edge.
+Les auto-appros sont encore en stade expérimental. Elles ont été testées avec succès sous Chrome et Opera, ne fonctionnent pour l'instant que partiellement sous Safari et Firefox (il faut être sûr d'avoir remplacé le 0 par un 1 pour tous les articles "cachés" par Chocapix) et ne marchent pas du tout avec Edge.
 
 Ouvrir un invite de commande dans le dossier qui contient le fichier Python et la facture. Ouvrir Chocapix et cliquer sur "loguer une appro".
 
@@ -117,12 +117,11 @@ Attention à ne pas renommer le dossier "archive" en autre chose et espérer que
 Bouger la souris en mode appro avec Carrefour ou Auchan ou appuyer sur Ctrl+C dans l'invite de commande arrête totalement le script. Comme les changements de prix ne sont enregistrés dans une base de donnée qu'au dernier moment à la fin de l'exécution du script, ces changements ne seront pas encore enregistrés au moment de l'arrêt. Donc si Chocapix plante en plein milieu de l'appro, on peut sans crainte relancer le script, les changements de prix seront encore signalés et les nouveaux articles seront encore considérés nouveaux.
 
 # Quelques bugs ou messages d'erreur exotiques
-- RuntimeError: Unable to start Tika server. (après un traceback et un message d'erreur contenant Unable to run java; is it installed?) Ce problème rencontré avec un WSL Ubuntu a été résolu en installant Java. Pour plus de détails, voir https://stackoverflow.com/questions/36478741/installing-oracle-jdk-on-windows-subsystem-for-linux. Sur un Windows 10 où le même problème a été rencontré et où Java était déjà installé, la solution était d'ajouter le dossier bin de Java au PATH.
-- AttributeError: 'bytes' object has no attribute 'close'. Ce problème rencontré avec Windows 10 a été résolu en cherchant directement la ligne du module tika pointée par le message d'erreur complet, et en la supprimant. Il s'agit d'une erreur du côté de tika qui a été corrigée depuis. Pour plus de détails, voir https://github.com/chrismattmann/tika-python/pull/253/files.
-- Globalement, si un message d'erreur similaire au précédent se réfère au module tika, simplement supprimer la ligne ou la partie incriminée du module tika.py qui se trouve dans lib/site-packages/tika/ a tendance à résoudre le problème sans en causer d'autres, étonamment.
+- RuntimeError: Unable to start Tika server. (après un traceback et un message d'erreur contenant Unable to run java; is it installed?) Ce problème rencontré avec un WSL Ubuntu a été résolu en installant Java. Pour plus de détails, voir https://stackoverflow.com/questions/36478741/installing-oracle-jdk-on-windows-subsystem-for-linux. Sur un Windows 10 où le même problème a été rencontré et où Java était déjà installé, la solution était d'ajouter le dossier bin de Java au PATH. Le module tika a besoin de Java 7 au moins pour fonctionner.
+- AttributeError: module 'os' has no attribute 'setsid'. Ce problème rencontré avec Windows 10 a été résolu en cherchant directement la ligne du module tika pointée par le message d'erreur complet, et en supprimant l'argument facultatif "preexec_fn=os.setsid" de l'appel de fonction Popen sur cette ligne. Il s'agit d'une erreur du côté de tika qui a été corrigée depuis. Pour plus de détails, voir https://github.com/chrismattmann/tika-python/issues/278.
+- Si un autre message d'erreur se réfère au module tika comme le précédent, simplement supprimer la ligne ou la partie incriminée du module tika.py qui se trouve dans lib/site-packages/tika/ a tendance à résoudre le problème sans en causer d'autres, étonamment. Si cela ne marche toujours pas, rentrer dans un invite de commande "pip uninstall tika" puis "pip install tika==1.19" ou alors dans un shell conda, "\>\>\> conda uninstall tika" puis "\>\>\> conda install tika=1.19", en faisant attention au nombre de "=" qui n'est pas le même pour pip et pour conda. La version 1.19 de tika semble ne pas poser de problème contrairement aux versions plus récentes que ses auteurs ont du mal à rendre cross-platform du premier coup.
 - L'ordinateur redémarre dès que le script commence à s'exécuter. Ce problème rencontré avec un MacOS 10.18 s'explique par le fait que l'autorisation de prendre le contrôle du clavier n'avait pas été donnée à Python. La fenêtre pour régler ces autorisations peut apparaître en tapant dans un shell python >>> import pyautogui as g; g.write("a")
 
 # Fonctionnalités futures envisageables
 - Prise en charge de Intermarché
 - Prise en charge web de Carrefour
-- Auto-appro Cora
