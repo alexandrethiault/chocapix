@@ -17,11 +17,14 @@ gui.PAUSE = 0.02  # Temps entre chaque action du mode auto (>=0.02!)
 brands = ["carrefour", "auchan", "cora_f", "cora_r", "houra", "picard"]
 fullauto = ["carrefour", "auchan", "houra"]
 
+repository = "https://github.com/alexandrethiault/chocapix"
+contact = "Alexandre Thiault"  # Consulter le README avant de le contacter
+
 ### Parsing
 
-#  Mot qui donne fiablement l'origine de la facture si on le trouve dedans
+# Mot qui donne fiablement l'origine de la facture si on le trouve dedans
 keyword = {
-    "carrefour": "OOSHOP",
+    "carrefour": "Z.I Route de Paris",
     "auchan": "Auchan Direct",
     "cora_f": "Facture coradrive",
     "cora_r": "Récapitulatif de commande coradrive",
@@ -29,7 +32,7 @@ keyword = {
     "picard": "SIRET : 78493968805071"
 }
 
-#  Emplacement de la date dans le raw parse de la facture
+# Emplacement de la date dans le raw parse de la facture
 finddate = {
     "carrefour": (lambda s: s[s.find("Date de commande : ")+19:s.find("Date de commande : ")+29]),
     "auchan": (lambda s: s[s.find("FACTURE N° ")+32:s.find("FACTURE N° ")+42]),
@@ -176,7 +179,7 @@ class Article:
                 self.price = float(line[-8 + shift])
                 self.qty = int(line[-6 + shift])
         elif brand == "cora_r":
-            shift = -2 if line[-6] == "€" else 0 # remise
+            shift = -2 if line[-6] == "€" else 0  # Remise
             assert line[-1] == "€" and line[-4 + shift] == "€"
             if "€/kg" in line:
                 i = line.index("€/kg")
@@ -301,7 +304,7 @@ def get_from_sourcefile(filename):
     return get_from_source('\n'.join(lines))
 
 """
-def get_from_web(idPanier): #articles = get_from_web(55006015)
+def get_from_web_houra(idPanier): #articles = get_from_web(55006015)
     auth = {'Email': input("Email ? "), 'Pass': input("Mot de passe ? "), "CPClient": "91120"}
     web = webbot.Browser()
     log_in("houra", web, auth)
@@ -510,12 +513,16 @@ if __name__ == "__main__":
         except FileNotFoundError:
             sys.exit("\nLa facture est introuvable. Il faut qu'elle soit dans le même dossier que be.py. Vérifier le nom exact de la facture.")
         except (KeyError, NotImplementedError) as brand:
+            brand = str(brand)
             if brand in brands:
                 sys.exit(f"\nLa façon de parser les factures de {brand} n'a pas encore été codée.")
             elif brand and brand[:-1] in brands and brand[-1] == "0":
-                sys.exit(f"\nAucun article n'a pu être reconnu. Il semble que {brand[:-1]} a légèrement modifié la forme de ses factures.")
+                sys.exit(f"\nAucun article n'a pu être reconnu. Il semble que {brand[:-1]} a légèrement modifié la forme de ses factures. Merci de prévenir {contact} pour mettre à jour la détection des articles {brand[:-1]} par ce script.")
             else:
-                sys.exit(f"\nLa marque de {brand} n'a pas pu être reconnue. Il peut s'agir d'une nouvelle marque (parsing pas encore implémenté) ou alors la forme de la facture a beaucoup changé (parsing à refaire).")
+                sys.exit(f"\nLa marque de {brand} n'a pas pu être reconnue. Il peut s'agir d'une nouvelle marque (parsing pas encore implémenté) ou alors la forme de la facture a beaucoup changé (parsing à refaire). Merci de prévenir {contact} pour mettre à jour ce script.")
+        except:
+            print(f"\nUne erreur inattendue a été rencontrée. Consultez le paragraphe \"Quelques bugs ou messages d'erreur exotiques\" sur {repository}. Si vous ne pouvez pas résoudre le problème, merci de prévenir {contact}.")
+            raise
         finally:
             end_time = time()
             print(f"\nTemps écoulé : {end_time-start_time} secondes.")
