@@ -12,22 +12,22 @@ Toutefois, ce script n'a pas pour vocation :
 
 # Prérequis
 
-Le script a été testé avec succès sur Windows 10, MacOS, Ubuntu, et un WSL Ubuntu. Rien n'est garanti pour d'autres systèmes d'exploitation.
+Le script est prévu pour être compatible avec tous les systèmes d'exploitation, si tant est qu'ils supportent Python 3 et les modules utilisés par ce script (voir suite de la section). 
 
-Pour loguer une appro avec ce script, il faut selon les marques (voir détail plus bas) avoir la facture PDF originale ou un fichier .txt contenant le code-source HTML de la page web contenant la liste des aliments achetés. Dans le reste du README, je ferai référence à ces deux types de documents sous le même nom "facture".
+Pour loguer une appro avec ce script, il faut selon les marques (voir détail plus bas) avoir la facture PDF originale et/ou un fichier .html contenant le code-source HTML de la page web contenant la liste des aliments achetés. Dans le reste du README, je ferai référence à ces deux types de documents sous le même nom "facture".
 
-Dans tous les navigateurs, le code-source HTML d'une page s'ouvre en appuyant sur Ctrl+U sur PC et Cmd+U ou Option+Cmd+U selon le navigateur sur Mac (Pro-tip : Ctrl+A puis Ctrl+C ou Cmd+A puis Cmd+C est une bonne façon de copier tout le code-source rapidement). 
+Dans tous les navigateurs, le code-source HTML d'une page s'ouvre en appuyant sur Ctrl+U sur PC et Cmd+U ou Option+Cmd+U selon le navigateur sur Mac (Pro-tip : Ctrl+A puis Ctrl+C ou Cmd+A puis Cmd+C est une bonne façon de copier tout le code-source rapidement. Certains navigateurs permettent aussi de construire un fichier html du code source directement avec Ctrl+S). 
 
 Si votre BE n'a pas commencé à utiliser ce script dès la première appro, il sera aussi utile d'avoir le plus de factures possible venant des anciennes appros.
 
 Pour l'instant les marques suivantes sont prises en charge :
 - Carrefour (facture .pdf)
 - Auchan (factures .pdf)
-- Houra (code-source HTML de https://www.houra.fr/cpt/index.php?c=ancienne-commande&idPanier=xxxxxxxx collé dans un fichier .txt)
-- Cora (factures .pdf et récapitulatifs de commande .pdf)
+- Houra (code-source HTML de https://www.houra.fr/cpt/index.php?c=ancienne-commande&idPanier=xxxxxxxx ou https://www.houra.fr/cpt/index.php?c=listefromcmd&s=c_1 ET facture pdf disponible sur https://www.houra.fr/cpt/index.php?c=anciennes-commandes )
+- Cora (factures .pdf ou récapitulatifs de commande .pdf)
 - Picard (factures .pdf)
 
-Télécharger le fichier be.py et le ranger dans un dossier qui contiendra aussi les factures. Créer un sous-dossier, l'appeler "archive", et y ranger toutes les factures qui ont déjà été loguées par le passé s'il y en a.
+Télécharger le fichier be.py et le ranger dans un dossier qui contiendra aussi les factures. Créer un sous-dossier, l'appeler "archive", et y ranger toutes les factures qui ont déjà été loguées par le passé s'il y en a. Dans le cas des factures Houra, il faut à la fois la facture PDF et la facture HTML, qu'il faudra regrouper dans un dossier dont le nom peut être tout sauf "archive" (ce dossier existe déjà), "appro" ou "noedit" (ce sont des mots-clés particuliers).
 
 Pour exécuter ce script il faut au préalable un interpréteur Python 3.6 ou plus récent. Il faudra éventuellement installer les modules Python suivants, s'ils provoquent des erreurs d'imports : os, sys, re, time, tika et pyautogui
   
@@ -39,7 +39,7 @@ Ou plus simplement, si votre interpréteur est anaconda, taper directement dans 
 
 \>\>\> conda install nom_du_module
 
-Si cela ne marche pas, c'est probablement que la version utilisée de Python est antérieure à 3.4 ou que plusieurs versions de Python sont installées. Dans tous les cas, https://docs.python.org/3/installing/index.html est une ressource utile.
+Si cela ne marche pas, c'est probablement que la version utilisée de Python est antérieure à 3.4 ou que plusieurs versions de Python se font concurrence. Dans tous les cas, https://docs.python.org/3/installing/index.html est une ressource utile.
 
 Le module pyautogui s'installe aussi de cette manière sur Windows et MacOS mais demande un soin supplémentaire pour les autres OS, ce qui est bien détaillé ici : https://pyautogui.readthedocs.io/en/latest/install.html
 
@@ -59,21 +59,21 @@ Si un message du type "\[MainThread  \] \[WARNI\]  Failed to see startup log mes
 
 A l'issue, s'il n'y a pas d'appro à faire tout de suite, l'invite de commande peut être fermé. Un fichier du nom de "prix_marque.txt" a été ajouté pour chaque marque représentée par au moins une facture : il fait office de base de données des prix pour cette marque, indépendante de celle de Chocapix, et le script l'utilise pour comparer les prix des futures appros.
 
-Ouvrir ces fichiers texte. Les articles y sont listés avec à chaque ligne, un 0, puis le code-barres s'il est présent dans les factures (ou juste "-" sinon), puis le prix unité ou prix au kilogramme, puis le nom de l'article. Parcourir rapidement cette liste d'articles et remplacer les 0 en début de ligne par des 1 pour tous les articles que vous ne souhaitez pas logguer lors d'une appro (des produits en open, par exemple, produit d'entretien, papier cuisson, sel, épices...). Cela permettra au script d'ignorer ces articles à l'avenir.
+Ouvrir ces fichiers texte. Les articles y sont listés avec à chaque ligne, un 0, puis le code-barres s'il est présent dans les factures (ou juste "-" sinon), puis le prix unité ou prix au kilogramme, puis le nom de l'article. Parcourir rapidement cette liste d'articles et remplacer les 0 en début de ligne par des 1 pour tous les articles que vous ne souhaitez pas loguer lors d'une appro (des produits en open, par exemple, produit d'entretien, papier cuisson, sel, épices...). Cela permettra au script d'ignorer ces articles à l'avenir.
 
 A part pour le premier caractère de chaque ligne, ces fichiers ne doivent pas être modifiés.
 
-Dans le cas de Carrefour, Auchan et Houra, l'auto-appro est rendue possible mais logue les articles grâce à leurs codes-barres. Si ce n'est pas déjà fait, il faudra donc faire connaître à Chocapix tous les codes-barres des articles que vous avez logués pour ces marques. Comme Chocapix ne permet pas d'ajouter un code-barres pour un article déjà logué, il faudra créer autant de nouveaux articles et faire autant de regroupements que de code-barres manquant. Pour aider dans cette tâche, on pourra utiliser le fichier texte associé à la marque, qui liste justement tous les articles que vous avez commandés auprès de cet approvisionneur.
+Dans le cas de Carrefour, Auchan et Houra, l'auto-appro est rendue possible mais logue les articles grâce à leurs codes-barres, qui ont toujours 13 chiffres (la référence des factures PDF Picard et Houra ne sont pas des codes-barres, le code-barres de Houra est caché dans la facture HTML). Si ce n'est pas déjà fait, il faudra donc faire connaître à Chocapix tous les codes-barres des articles que vous avez logués pour ces marques. Comme Chocapix ne permet pas d'ajouter un code-barres pour un article déjà logué, il faudra créer autant de nouveaux articles et faire autant de regroupements que de code-barres manquant. Pour aider dans cette tâche, on pourra utiliser le fichier texte associé à la marque, qui liste justement tous les articles que vous avez commandés auprès de cet approvisionneur.
 
 # Utilisation pour une auto-appro Carrefour, Auchan ou Houra
 
-Les auto-appros sont encore en stade expérimental. Elles ont été testées avec succès sous Chrome et Opera, ne fonctionnent pour l'instant que partiellement sous Safari et Firefox (il faut être sûr d'avoir remplacé le 0 par un 1 pour tous les articles "cachés" par Chocapix) et ne marchent pas du tout avec Edge.
+Les auto-appros sont encore en stade expérimental. Elles ont été testées avec succès sous Chrome et Opera, ne fonctionnent pour l'instant que sous une certaine condition sous Safari et Firefox (il faut être sûr d'avoir remplacé le 0 par un 1 pour tous les articles "cachés" par Chocapix) et ne marchent pas du tout avec Edge.
 
 Ouvrir un invite de commande dans le dossier qui contient le fichier Python et la facture. Ouvrir Chocapix et cliquer sur "loguer une appro".
 
-Pour lancer le script sur une facture qui s'appelle "facture.pdf" (ou .txt pour Houra), taper :
+Pour lancer le script sur une facture qui s'appelle "facture.pdf" (resp. un dossier "dir" contenant les deux types de factures pour Houra), taper :
 
-python be.py facture.pdf appro
+python be.py facture.pdf appro          (resp. python be.py dir appro)
 
 Si un message du type "\[MainThread  \] \[WARNI\]  Failed to see startup log message; retrying..." s'affiche, l'ignorer, ça devrait terminer au bout de quelques secondes si la connexion internet est correcte.
 
@@ -122,6 +122,6 @@ Bouger la souris en mode appro avec Carrefour ou Auchan ou appuyer sur Ctrl+C da
 - Si un autre message d'erreur se réfère au module tika comme le précédent, simplement supprimer la ligne ou la partie incriminée du module tika.py qui se trouve dans lib/site-packages/tika/ a tendance à résoudre le problème sans en causer d'autres, étonamment. Si cela ne marche toujours pas, rentrer dans un invite de commande "pip uninstall tika" puis "pip install tika==1.19" ou alors dans un shell conda, "\>\>\> conda uninstall tika" puis "\>\>\> conda install tika=1.19", en faisant attention au nombre de "=" qui n'est pas le même pour pip et pour conda. La version 1.19 de tika semble ne pas poser de problème contrairement aux versions plus récentes que ses auteurs ont du mal à rendre cross-platform du premier coup.
 - L'ordinateur redémarre dès que le script commence à s'exécuter. Ce problème rencontré avec un MacOS 10.18 s'explique par le fait que l'autorisation de prendre le contrôle du clavier n'avait pas été donnée à Python. La fenêtre pour régler ces autorisations peut apparaître en tapant dans un shell python >>> import pyautogui as g; g.write("a")
 
-# Fonctionnalités futures envisageables
+# Fonctionnalités futures envisagées
 - Prise en charge de Intermarché
 - Prise en charge web de Carrefour

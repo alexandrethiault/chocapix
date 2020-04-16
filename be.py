@@ -1,8 +1,7 @@
 #! /usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import os
-import sys
+import os, sys
 import re
 #import webbot  # Utile que pour la fonctionnalité abandonnée get_from_web
 import pyautogui as gui
@@ -15,7 +14,7 @@ from tika import parser
 gui.PAUSE = 0.02  # Temps entre chaque action du mode auto (>=0.02!)
 
 brands = ["carrefour", "auchan", "cora_f", "cora_r", "houra", "picard"]
-fullauto = ["carrefour", "auchan", "houra"]
+fullauto = ["carrefour", "auchan", "houra_html"]
 
 repository = "https://github.com/alexandrethiault/chocapix"
 contact = "Alexandre Thiault"  # Consulter le README avant de le contacter
@@ -28,7 +27,7 @@ keyword = {
     "auchan": "Auchan Direct",
     "cora_f": "Facture coradrive",
     "cora_r": "Récapitulatif de commande coradrive",
-    "houra": "www.houra.fr",
+    "houra": "houra.fr",
     "picard": "SIRET : 78493968805071"
 }
 
@@ -38,7 +37,7 @@ finddate = {
     "auchan": (lambda s: s[s.find("FACTURE N° ")+32:s.find("FACTURE N° ")+42]),
     "cora_f": (lambda s: s[s.find(", le ")+5:s.find(", le ")+15]),
     "cora_r": (lambda s: s[s.find("Livraison ")+13:s.find("Livraison ")+23]),
-    "houra": (lambda s: s[s.find("Ma commande du ")+15:s.find("Ma commande du ")+25]),
+    "houra": (lambda s: s[s.find("Réf. p")-45:s.find("Réf. p")-35]),
     "picard": (lambda s: s[s.find("DATE : ")+7:s.find("DATE : ")+17])
 }
 
@@ -59,7 +58,8 @@ is_article = {
     "auchan": (lambda line: article_with_code(13, line)),
     "cora_f": (lambda line: line and "Frais de " not in line),
     "cora_r": article_cora_r,
-    "picard": (lambda line: article_with_code(6, line))
+    "picard": (lambda line: article_with_code(6, line)),
+    "houra": (lambda line: line.find(" ")>=4 and line[:line.find(" ")].isdigit()),
 }
 
 """
@@ -84,6 +84,14 @@ def new_parsing(filename):
         print(line)
     return string
 
+def new_parsing_txt(filename):
+    string=""
+    with open(filename) as f:
+        for line in f.readlines():
+            string+=line
+            print(line.split(' '))
+    return string
+
 class Article:
     def __init__(self, line, brand, date=None):
         """
@@ -94,7 +102,7 @@ class Article:
         self.sernumber = le code-article présent sur la facture (string)
         self.name = le nom de l'article affiché sur la facture (string)
         self.qty = la quantité livrée (int ou float)
-        self.price = le prix unité (float)
+        self.price = le prix unité TTC (float)
         self.TVA = la taux de TVA (%) (float)
 
         Pour Carrefour un line typique ressemble à :
@@ -120,7 +128,7 @@ class Article:
         Pour Picard un line typique ressemble à :
         ['012949', '300G', 'GIROLLES', '2', '7,95', '€', '15,90', '€', '5,50%']
         ou ['082109', '2', 'VACHERIN', 'VANILLE/FRAMB', '1', 'OFFERT']
-        s[0] est un faux code-barres : écrire self.sernumber="-". Tout est TTC.
+        s[0] est un faux code-barres. Tout est TTC.
         Subtilité : certains articles sont offerts, ce qui affecte le parsing.
 
         Pour découvrir à quoi ressemblent ces lignes parsées pour un nouveau
@@ -131,7 +139,7 @@ class Article:
         Plein de lignes de la facture parsée ne se rapportent pas à un article
         (destinataire, date d'émission de la facture...), il faut aussi savoir
         les ignorer. Utiliser pour ça des assert. AssertionError, ValueError
-        et IndexError sont rattrapées par la fonction get_from_file qui est la
+        et IndexError sont rattrapées par la fonction get_from_pdf qui est la
         fonction qui crée les instances de Article.
 
         """
@@ -195,20 +203,31 @@ class Article:
                 self.qty = int(line[-3 + shift])
                 self.price = float(line[-5 + shift])
                 self.name = " ".join([wrd for wrd in line[:-7 + shift] if wrd])
+        elif brand == "houra_html":
+            qty_pattern='<input type="text" class="btnQuantite" name="quantite"'
+            j=line.index('alt="') # alt="0123456789012 - MARQUE - Nom" title=...
+            k=line.index('" title="')
+            self.sernumber = line[j+5:j+18]
+            self.name = line[j+21:k].replace("&#39;","'").replace("&amp;","&")
+            j=line.index('<div class="contenant">') + 23
+            self.name += " "+line[j:line.find('<',j)]
+            j=line.index('class="prix">')+13 # beaucoup plus loin dans le html
+            try:self.price = float(line[j:line.index('€')].replace(',', '.'))
+            except:self.price = float(line[j:line.index('&')].replace(',', '.'))
+            self.qty = None
+            if "RUPTURE" not in line[:100]:
+                j=line.find(qty_pattern)
+                if j != -1:
+                    j=line.find("value=", j)
+                    k=line.find(" ", j)
+                    self.qty = line[j+7:k-1]
         elif brand == "houra":
-            sn = line[line.index('alt="')+5:line.index('" title="')]
-            line = line[line.index('<div class="contenant">') + 23:]
-            sn += f" ({line[:line.index('<')]})"
-            self.sernumber = sn[:13]
-            assert self.sernumber.isdigit()
-            self.name = sn[16:]
-            line = line[line.index('class="prix">') + 13:]
-            try:self.price = float(line[:line.index('€')].replace(',', '.'))
-            except:self.price = float(line[:line.index('&')].replace(',', '.'))
-            line = line[line.index('size="2" maxlength="3" value="') + 30:]
-            self.qty = float(line[:line.index('"')].replace(',', '.'))
+            self.name = ' '.join(line[1:-5])
+            self.qty = float(line[-5].replace(',','.'))
+            self.price = float(line[-2].replace(',','.'))
+            self.TVA = float(line[-3].replace(',','.'))
         elif brand == "picard":
-            # line[0] n'est pas le code-barres
+            # line[0] n'est pas un code-barres
             if line[-1] == "OFFERT":
                 line[-1:] = ["0,00", "€", "0,00", "€", "0,00%"]
             assert line[-2] == "€" and line[-4] == "€"
@@ -237,7 +256,7 @@ def stddate(jjmmaaaa):
     aaaa = jjmmaaaa[6:]
     return f"{aaaa}{mm}{jj}"
 
-def get_from_file(filename):
+def get_from_pdf(filename):
     # Récupérer la date, la marque et tous les articles de la facture filename
     raw = parser.from_file(filename)
     string = raw["content"]
@@ -285,23 +304,26 @@ def get_from_source(string):
             break
     else:
         raise NotImplementedError(filename)
-    try:
-        date = stddate(finddate[brand](string))
-    except:
-        raise NotImplementedError(filename)
-    articles = []
-    if brand == "houra":
-        for m in re.finditer('<div class="zonePhoto">', string):
-            articles.append(Article(string[m.start():m.start()+5000], "houra"))
+    articles=[]
+    if brand=="houra":
+        article_pattern='<div class="row no-padding">\n    \n        <div'
+
+        for m in re.finditer(article_pattern, string):
+            i=m.start() + 42
+            line=string[i-100:string.find(article_pattern[:28],i)]
+            article = Article(line, "houra_html")
+            article.brand = "houra"
+            articles.append(article)
     else:
         raise NotImplementedError(filename)
-    return date, brand, articles
+    return brand, articles
 
-def get_from_sourcefile(filename):
-    lines = []
-    with open(filename, "r", encoding="utf-8") as f:
-        for line in f.readlines(): lines.append(line)
-    return get_from_source('\n'.join(lines))
+def get_from_html(htmlname):
+    string=""
+    with open(htmlname) as f:
+        for line in f.readlines():
+            string+=line
+    return get_from_source(string)
 
 """
 def get_from_web_houra(idPanier): #articles = get_from_web(55006015)
@@ -313,6 +335,51 @@ def get_from_web_houra(idPanier): #articles = get_from_web(55006015)
     web.close_current_tab()
     return get_from_source(page_source)
 """
+
+def merge(dir, parsedpdf, parsedhtml):
+    date, brand, ap = parsedpdf
+    _, ah = parsedhtml
+    assert brand == "houra"
+    details = []
+    def match(article):
+        hname = article.name
+        hprice = article.price
+        def strip(s): return s.strip(", '").lower().replace("é", "e").replace("è", "e").replace("ê", "e").replace("ë", "e").replace("à", "a").replace("â", "a").replace("î", "i").replace("ï", "i").replace("û", "u").replace("ô", "o").replace("%vol", "°").replace(".", ",").replace("'", "")
+        hwords = {strip(i) for i in hname.split(" ") if i[2:] or not i.isalpha()}
+        hwords = {(i[:-1] if i.endswith("s") else i) for i in hwords}
+        hwords = {(i[i.find("x")+1:] if "x" in i and i[:i.find("x")].isdigit() else i) for i in hwords}
+
+        scores = {a: min(a.price/hprice, hprice/a.price)**4+ (hprice==a.price) for a in ap}
+        similarity = []
+        for a in scores:
+            pwords = {strip(i) for i in a.name.split(" ") if i[2:] or not i.isalpha()}
+            pwords = {(i[:-1] if i.endswith("s") else i) for i in pwords}
+            pwords = {(i[i.find("x")+1:] if "x" in i and i[:i.find("x")].isdigit() else i) for i in pwords}
+            if "b#uf" in pwords: pwords.add("boeuf")
+            if "grinbergen" in pwords: pwords.add("grimbergen") # Oui réellement
+            scores[a] *= len(pwords&hwords)
+        ans = max(scores.keys(), key=(lambda key: scores[key]))
+        details.append(["",str(round(scores[ans],4)), hname, ans.name])
+        return ans
+
+    for a in ah:
+        #if a.qty is None: # Je ne fais pas confiance aux quantités html
+        a_in_ap = match(a)
+        a.qty = a_in_ap.qty
+
+    ah.sort(key=lambda a:a.name)
+    with open(os.path.join(dir,"facture_parsee.txt"), 'w') as f:
+        f.write("--- Fichier généré automatiquement ---\n\n")
+        for a in ah:
+            f.write(str(a)+"\n")
+
+    details.sort(key=lambda a:a[2])
+    with open(os.path.join(dir,"detail_association_noms.txt"), 'w') as f:
+        f.write("--- Fichier généré automatiquement ---\n\nUne étape du loguage des factures Houra est la fusion des attributs de deux factures.\nLa seule clé primaire utilisable est le nom, et il y a des différences dans les noms des deux factures.\nPour associer les paires de noms ensembles, le script fait des suppositions pas toujours sures.\nVoici le détail des associations faites.\n\nLes paires de noms sont précédées d'un indice de ressemblance. Les bas indices (4 ou moins) sont ceux qui doivent retenir votre attention.\n\n")
+        for detail in details:
+            f.write("\n".join(detail)+"\n")
+
+    return date, brand, ah
 
 ### Affichages et prise de contrôle du clavier pour loguer, que si appro = True
 
@@ -378,7 +445,7 @@ def group_by_sernum(articles):
             ans[article.ref] = article
     return list(ans.values())
 
-def update_prices(parsedfile):
+def update_prices(parsedfile, dir=None):
     global edit
     date, brand, articles = parsedfile
     if not articles:
@@ -432,16 +499,16 @@ def update_prices(parsedfile):
 
     # Lister et créer un compte rendu des changements de prix...
     if not archive:
-        with open(f"compte-rendu_{brand}_{date}.txt", "w") as cr:
+        crname = f"compte-rendu_{brand}_{date}.txt"
+        if dir is not None: crname = os.path.join(dir, crname)
+        with open(crname, "w") as cr:
             cr.write("--- Fichier généré automatiquement ---\n")
-            if brand == "houra":
-                cr.write("\nRappel : pour Houra, les prix sont donnés à la quantité reçue, jamais au kg ou au L.\n")
             if newprices:
-                cr.write("\nEvolutions de prix :\n")
+                cr.write("\nEvolutions de prix, déjà notées dans Chocapix, à titre informatif :\n")
             for (former_price, article) in newprices:
                 cr.write(f"{article.name} : évolution de {former_price} à {article.price}\n")
             if newarticles:
-                cr.write("\nNouveaux articles :\n")
+                cr.write("\nNouveaux articles, pas encore notés dans Chocapix, à loguer à la main :\n")
             for article in newarticles:
                 cr.write(f"{article}\n")
 
@@ -465,17 +532,13 @@ if __name__ == "__main__":
         edit = True
 
         entrypoint = update_prices
-        pdffiles = []
-        txtfiles = []
+        pdfbills = []
+        twobilldirs = []
         while len(sys.argv) > 1:
             opt = sys.argv[1]
-            if opt.endswith(".pdf"):
-                pdffiles.append(opt)
-            elif opt.endswith(".txt"):
-                if opt.startswith("prix_"):
-                    sys.exit("Les noms de la forme prix_xxx.txt sont réservés et ne peuvent pas être donnés en argument. Si c'était le nom du fichier contenant le code-source HTML de la liste des articles achetés, merci de renommer ce fichier.")
-                txtfiles.append(opt)
-            elif opt == "appro":
+            if opt == "appro":
+                if os.path.isdir("appro"):
+                    sys.exit("appro ne doit pas être le nom d'un dossier.")
                 appro = True
             elif opt == "archive":
                 archive = True
@@ -485,6 +548,13 @@ if __name__ == "__main__":
                 gui.PAUSE = float(opt[6:].replace(",", "."))
                 if gui.PAUSE < 0.02 or gui.PAUSE > 0.1:
                     sys.exit("Il est recommandé de choisir une pause entre 0.02 et 0.1 seconde.")
+            elif opt.endswith(".pdf"):
+                pdfbills.append(opt)
+            elif os.path.isdir(opt):
+                if len([i for i in os.listdir(opt) if i[-4:]==".pdf"]) != 1\
+                or len([i for i in os.listdir(opt) if i[-5:]==".html"]) != 1:
+                    sys.exit("Donner en argument un dossier autre que archive sert à donner une facture PDF et une facture HTML de Houra. Vérifiez que le dossier contient ces deux factures et pas d'autres fichiers PFD ou HTML.")
+                twobilldirs.append(opt)
             else:
                 sys.exit(f"Option \"{sys.argv[1]}\" inconnue.")
             sys.argv.pop(1)
@@ -493,25 +563,30 @@ if __name__ == "__main__":
 
         try:
             start_time = time()
-            if archive and not pdffiles+txtfiles:
+            if archive and not pdfbills+twobilldirs:
                 for filename in os.listdir("archive"):
                     if filename.endswith(".pdf"):
-                        pdffiles.append("./archive/"+filename)
-                    elif filename.endswith(".txt"):
-                        txtfiles.append("./archive/"+filename)
-            parsedfiles = [get_from_file(filename) for filename in pdffiles]
-            parsedfiles += [get_from_sourcefile(filename) for filename in txtfiles]
-            parsedfiles.sort()
-            for parsedfile in parsedfiles:
-                entrypoint(parsedfile)
-            if pdffiles+txtfiles:
+                        pdfbills.append(os.path.join("archive","filename"))
+                    else:
+                        twobilldirs.append(os.path.join("archive","filename"))
+            parsedbills = [get_from_pdf(filename) for filename in pdfbills]
+            for dir in twobilldirs:
+                bills = [os.path.join(dir,bill) for bill in os.listdir(dir) if bill[-4:]==".pdf" or bill[-5:]==".html"]
+                if bills[1][-1]=="f": bills=bills[::-1]
+                parsedpdf = get_from_pdf(bills[0])
+                parsedhtml = get_from_html(bills[1])
+                parsedbills.append(merge(dir, parsedpdf, parsedhtml))
+            parsedbills.sort()
+            for parsedbill in parsedbills:
+                entrypoint(parsedbill)
+            if pdfbills+twobilldirs:
                 print("\n" + ("Base de données des prix mise à jour. " if edit else "") + ("" if archive else "Ecriture du compte-rendu des évolutions de prix terminée."))
             else:
                 print("\nAucune facture n'a été donnée en argument.")
         except KeyboardInterrupt:
             sys.exit("\nScript interrompu définitivement.")
-        except FileNotFoundError:
-            sys.exit("\nLa facture est introuvable. Il faut qu'elle soit dans le même dossier que be.py. Vérifier le nom exact de la facture.")
+        except FileNotFoundError as e:
+            sys.exit(f"\nLa facture {e} est introuvable. Vérifier le nom exact de la facture.")
         except (KeyError, NotImplementedError) as brand:
             brand = str(brand)
             if brand in brands:
@@ -521,7 +596,7 @@ if __name__ == "__main__":
             else:
                 sys.exit(f"\nLa marque de {brand} n'a pas pu être reconnue. Il peut s'agir d'une nouvelle marque (parsing pas encore implémenté) ou alors la forme de la facture a beaucoup changé (parsing à refaire). Merci de prévenir {contact} pour mettre à jour ce script.")
         except:
-            print(f"\nUne erreur inattendue a été rencontrée. Consultez le paragraphe \"Quelques bugs ou messages d'erreur exotiques\" sur {repository}. Si vous ne pouvez pas résoudre le problème, merci de prévenir {contact}.")
+            print(f"\nUne erreur inattendue a été rencontrée. Consultez le paragraphe \"Quelques bugs ou messages d'erreur exotiques\" sur {repository}. Si le problème persiste, merci de prévenir {contact}.")
             raise
         finally:
             end_time = time()
