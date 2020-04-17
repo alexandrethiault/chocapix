@@ -13,8 +13,8 @@ from tika import parser
 
 gui.PAUSE = 0.02  # Temps entre chaque action du mode auto (>=0.02!)
 
-brands = ["carrefour", "auchan", "cora_f", "cora_r", "houra", "picard"]
-fullauto = ["carrefour", "auchan", "houra_html"]
+brands = ["carrefour", "auchan", "cora_f", "cora_r", "houra", "picard",]
+fullauto = ["carrefour", "auchan", "houra_html",]
 
 repository = "https://github.com/alexandrethiault/chocapix"
 contact = "Alexandre Thiault"  # Consulter le README avant de le contacter
@@ -28,7 +28,7 @@ keyword = {
     "cora_f": "Facture coradrive",
     "cora_r": "Récapitulatif de commande coradrive",
     "houra": "houra.fr",
-    "picard": "SIRET : 78493968805071"
+    "picard": "SIRET : 78493968805071",
 }
 
 # Emplacement de la date dans le raw parse de la facture
@@ -38,7 +38,7 @@ finddate = {
     "cora_f": (lambda s: s[s.find(", le ")+5:s.find(", le ")+15]),
     "cora_r": (lambda s: s[s.find("Livraison ")+13:s.find("Livraison ")+23]),
     "houra": (lambda s: s[s.find("Réf. p")-45:s.find("Réf. p")-35]),
-    "picard": (lambda s: s[s.find("DATE : ")+7:s.find("DATE : ")+17])
+    "picard": (lambda s: s[s.find("DATE : ")+7:s.find("DATE : ")+17]),
 }
 
 # Indicateurs préliminaire qu'un article commence peut-être à cette ligne
@@ -84,7 +84,7 @@ def new_parsing(filename):
         print(line)
     return string
 
-def new_parsing_txt(filename):
+def new_parsing_html(filename):
     string=""
     with open(filename) as f:
         for line in f.readlines():
@@ -204,7 +204,6 @@ class Article:
                 self.price = float(line[-5 + shift])
                 self.name = " ".join([wrd for wrd in line[:-7 + shift] if wrd])
         elif brand == "houra_html":
-            qty_pattern='<input type="text" class="btnQuantite" name="quantite"'
             j=line.index('alt="') # alt="0123456789012 - MARQUE - Nom" title=...
             k=line.index('" title="')
             self.sernumber = line[j+5:j+18]
@@ -215,6 +214,7 @@ class Article:
             try:self.price = float(line[j:line.index('€')].replace(',', '.'))
             except:self.price = float(line[j:line.index('&')].replace(',', '.'))
             self.qty = None
+            qty_pattern='<input type="text" class="btnQuantite" name="quantite"'
             if "RUPTURE" not in line[:100]:
                 j=line.find(qty_pattern)
                 if j != -1:
@@ -307,7 +307,6 @@ def get_from_source(string):
     articles=[]
     if brand=="houra":
         article_pattern='<div class="row no-padding">\n    \n        <div'
-
         for m in re.finditer(article_pattern, string):
             i=m.start() + 42
             line=string[i-100:string.find(article_pattern[:28],i)]
@@ -349,7 +348,7 @@ def merge(dir, parsedpdf, parsedhtml):
         hwords = {(i[:-1] if i.endswith("s") else i) for i in hwords}
         hwords = {(i[i.find("x")+1:] if "x" in i and i[:i.find("x")].isdigit() else i) for i in hwords}
 
-        scores = {a: min(a.price/hprice, hprice/a.price)**4+ (hprice==a.price) for a in ap}
+        scores = {a: min(a.price/hprice, hprice/a.price)**4 + (hprice==a.price) for a in ap}
         similarity = []
         for a in scores:
             pwords = {strip(i) for i in a.name.split(" ") if i[2:] or not i.isalpha()}
@@ -359,13 +358,14 @@ def merge(dir, parsedpdf, parsedhtml):
             if "grinbergen" in pwords: pwords.add("grimbergen") # Oui réellement
             scores[a] *= len(pwords&hwords)
         ans = max(scores.keys(), key=(lambda key: scores[key]))
-        details.append(["",str(round(scores[ans],4)), hname, ans.name])
+        details.append(["", str(round(scores[ans],4)), hname, ans.name])
         return ans
 
     for a in ah:
         #if a.qty is None: # Je ne fais pas confiance aux quantités html
         a_in_ap = match(a)
         a.qty = a_in_ap.qty
+        a.price = a_in_ap.price # Le prix PDF change jamais, sur HTML si...
 
     ah.sort(key=lambda a:a.name)
     with open(os.path.join(dir,"facture_parsee.txt"), 'w') as f:
@@ -375,7 +375,7 @@ def merge(dir, parsedpdf, parsedhtml):
 
     details.sort(key=lambda a:a[2])
     with open(os.path.join(dir,"detail_association_noms.txt"), 'w') as f:
-        f.write("--- Fichier généré automatiquement ---\n\nUne étape du loguage des factures Houra est la fusion des attributs de deux factures.\nLa seule clé primaire utilisable est le nom, et il y a des différences dans les noms des deux factures.\nPour associer les paires de noms ensembles, le script fait des suppositions pas toujours sures.\nVoici le détail des associations faites.\n\nLes paires de noms sont précédées d'un indice de ressemblance. Les bas indices (4 ou moins) sont ceux qui doivent retenir votre attention.\n\n")
+        f.write("--- Fichier généré automatiquement ---\n\nUne étape du loguage des factures Houra est la fusion des attributs de deux factures.\nLa seule clé primaire utilisable est le nom, et il y a des différences dans les noms des deux factures.\nPour associer les paires de noms ensembles, le script fait des suppositions pas toujours sures.\nVoici le détail des associations faites.\n\nLes paires de noms sont précédées d'un indice de ressemblance.\nLes bas indices (4 ou moins) sont ceux qui doivent retenir l'attention.\nSi une association se révèle en effet fautive, la quantité et le prix logués peuvent être faux.\nVérifiez alors sur la facture PDF pour récupérer les vraies valeurs.\n\n")
         for detail in details:
             f.write("\n".join(detail)+"\n")
 
@@ -404,12 +404,15 @@ def pause_script(newpos, posref):
         else:
             raise KeyboardInterrupt
 
+def kbconvert(string):
+    return ''.join([[")",'!','"',"£","$","%","^","&","*","("][int(i)] if i.isdigit() else i for i in string])
+
 def show_and_log(article, pricechange=False):
     # Afficher un article dans l'invite de commande, et en fullauto, le loguer
     if article.brand in fullauto:
         print(f"{article.sernumber} - {article.qty}\t{article.name}")
         pos = gui.position()
-        gui.typewrite(article.ref)
+        gui.typewrite((article.ref))  # kbconvert ici
         pause_script(gui.position(), pos)
         gui.press('return')
         sleep(gui.PAUSE*10)  # Laisser l'overlay arriver
@@ -418,11 +421,11 @@ def show_and_log(article, pricechange=False):
         gui.press('tab')
         if pricechange:
             gui.press('tab')
-            gui.typewrite(str(article.price).replace('.', ','))
+            gui.typewrite(str((article.price)).replace('.', ','))  # kbconvert ici
             gui.hotkey('shift', 'tab')
         gui.press('return')
         sleep(gui.PAUSE*5)  # Laisser l'encart rouge partir
-        gui.typewrite(str(article.qty).replace('.', ','))
+        gui.typewrite(str((article.qty)).replace('.', ','))  # kbconvert ici
         pause_script(gui.position(), pos)
         gui.click()
         gui.press('esc')
