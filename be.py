@@ -211,8 +211,8 @@ class Article:
             j=line.index('<div class="contenant">') + 23
             self.name += " "+line[j:line.find('<',j)]
             j=line.index('class="prix">')+13 # beaucoup plus loin dans le html
-            try:self.price = float(line[j:line.index('€')].replace(',', '.'))
-            except:self.price = float(line[j:line.index('&')].replace(',', '.'))
+            try:self.price = float(line[j:line.find('€', j)].replace(',', '.'))
+            except:self.price = float(line[j:line.find('&', j)].replace(',', '.'))
             self.qty = None
             qty_pattern='<input type="text" class="btnQuantite" name="quantite"'
             if "RUPTURE" not in line[:100]:
