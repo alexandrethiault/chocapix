@@ -27,23 +27,15 @@ Pour l'instant les marques suivantes sont prises en charge :
 - Cora (factures .pdf ou récapitulatifs de commande .pdf)
 - Picard (factures .pdf)
 
-Télécharger le fichier be.py et le ranger dans un dossier qui contiendra aussi les factures. Créer un sous-dossier, l'appeler "archive", et y ranger toutes les factures qui ont déjà été loguées par le passé s'il y en a. Dans le cas des factures Houra, il faut à la fois la facture PDF et la facture HTML, qu'il faudra regrouper dans un dossier dont le nom peut être tout sauf "archive" (ce dossier existe déjà), "appro" ou "noedit" (ce sont des mots-clés particuliers).
+Télécharger les fichiers `be.py` et `requirements.txt` et les ranger dans un dossier qui contiendra aussi les factures. Créer un sous-dossier, l'appeler `archive`, et y ranger toutes les factures qui ont déjà été loguées par le passé s'il y en a. Dans le cas des factures Houra, il faut à la fois la facture PDF et la facture HTML, qu'il faudra regrouper dans un dossier dont le nom peut être tout sauf `archive` (ce dossier existe déjà), `appro` ou `noedit` (ce sont des mots-clés particuliers).
 
-Pour exécuter ce script il faut au préalable un interpréteur Python 3.6 ou plus récent. Il faudra éventuellement installer les modules Python suivants, s'ils provoquent des erreurs d'imports : os, sys, re, time, tika et pyautogui
-  
-Sauf pour pyautogui, pour installer un module Python, il faut taper dans un invite de commande, en remplaçant éventuellement pip par pip3 :
+Pour exécuter ce script il faut au préalable un interpréteur Python 3.6 ou plus récent. Il a besoin de deux modules, `tika` et `pyautogui`, qui peuvent être installés avec la commande
 
-pip install nom_du_module
+`pip install -r requirements.txt`
 
-Ou plus simplement, si votre interpréteur est anaconda, taper directement dans un shell Python :
+Après ceci, `requirements.txt` peut être supprimé. Le module `pyautogui` peut demander un soin supplémentaire pour les OS Linux, ce qui est bien détaillé [ici](https://pyautogui.readthedocs.io/en/latest/install.html)
 
-\>\>\> conda install nom_du_module
-
-Si cela ne marche pas, c'est probablement que la version utilisée de Python est antérieure à 3.4 ou que plusieurs versions de Python se font concurrence. Dans tous les cas, https://docs.python.org/3/installing/index.html est une ressource utile.
-
-Le module pyautogui s'installe aussi de cette manière sur Windows et MacOS mais demande un soin supplémentaire pour les autres OS, ce qui est bien détaillé ici : https://pyautogui.readthedocs.io/en/latest/install.html
-
-Enfin, le script, ou plutôt le module tika qui extrait le contenu des pdf, a besoin pour fonctionner d'une connexion internet.
+Enfin, le script, ou plutôt le module `tika` qui extrait le contenu des pdf, a besoin pour fonctionner d'une connexion internet.
 
 L'exécution du script peut provoquer quelques bugs plus exotiques, certains sont décrits dans la dernière section du README.
 
@@ -53,11 +45,11 @@ Ouvrir un invite de commande dans le dossier qui contient le fichier Python, le 
 
 Taper dans l'invite de commande :
 
-python be.py archive
+`python be.py archive`
   
-Si un message du type "\[MainThread  \] \[WARNI\]  Failed to see startup log message; retrying..." s'affiche, l'ignorer, ça devrait terminer au bout de quelques secondes si la connexion internet est correcte.
+Si un message du type `\[MainThread  \] \[WARNI\]  Failed to see startup log message; retrying...` s'affiche, l'ignorer, ça devrait terminer au bout de quelques secondes si la connexion internet est correcte.
 
-A l'issue, s'il n'y a pas d'appro à faire tout de suite, l'invite de commande peut être fermé. Un fichier du nom de "prix_marque.txt" a été ajouté pour chaque marque représentée par au moins une facture : il fait office de base de données des prix pour cette marque, indépendante de celle de Chocapix, et le script l'utilise pour comparer les prix des futures appros.
+A l'issue, s'il n'y a pas d'appro à faire tout de suite, l'invite de commande peut être fermé. Un fichier du nom de `prix_marque.txt` a été ajouté pour chaque marque représentée par au moins une facture : il fait office de base de données des prix pour cette marque, indépendante de celle de Chocapix, et le script l'utilise pour comparer les prix des futures appros.
 
 Ouvrir ces fichiers texte. Les articles y sont listés avec à chaque ligne, un 0, puis le code-barres s'il est présent dans les factures (ou juste "-" sinon), puis le prix unité ou prix au kilogramme, puis le nom de l'article. Parcourir rapidement cette liste d'articles et remplacer les 0 en début de ligne par des 1 pour tous les articles que vous ne souhaitez pas loguer lors d'une appro (des produits en open, par exemple, produit d'entretien, papier cuisson, sel, épices...). Cela permettra au script d'ignorer ces articles à l'avenir.
 
@@ -71,19 +63,19 @@ Les auto-appros sont encore en stade expérimental. Elles ont été testées ave
 
 Ouvrir un invite de commande dans le dossier qui contient le fichier Python et la facture. Ouvrir Chocapix et cliquer sur "loguer une appro".
 
-Pour lancer le script sur une facture qui s'appelle "facture.pdf" (resp. un dossier "dir" contenant les deux types de factures pour Houra), taper :
+Pour lancer le script sur une facture qui s'appelle `facture.pdf` (resp. un dossier `dir` contenant les deux types de factures pour Houra), taper :
 
-python be.py facture.pdf appro          (resp. python be.py dir appro)
+`python be.py facture.pdf appro`          (resp. `python be.py dir appro`)
 
-Si un message du type "\[MainThread  \] \[WARNI\]  Failed to see startup log message; retrying..." s'affiche, l'ignorer, ça devrait terminer au bout de quelques secondes si la connexion internet est correcte.
+Si un message du type `\[MainThread  \] \[WARNI\]  Failed to see startup log message; retrying...` s'affiche, l'ignorer, ça devrait terminer au bout de quelques secondes si la connexion internet est correcte.
 
 Quelques instants après le lancement de la commande une fenêtre va apparaître vous demandant de cliquer sur la case pour les noms d'aliments du menu loggage. C'est parce que ce script n'accède pas directement à Chocapix, et se contente de prendre le contrôle de votre clavier et souris pour faire toutes les opérations d'un loggage habituel, mais beaucoup plus rapidement. Et pour savoir où se trouve la case pour les noms d'article, une bonne façon est de vous demander d'amener la souris dessus et de cliquer.
 
 A ce moment, il faut laisser le script remplir automatiquement les codes-barres, quantités, et prix si ils ont changé. Au cas où quelque chose ne tourne pas bien au cours de cette phase (scrolls, sélection de beaucoup de texte de la page, ou même déconnexion en sont des symptômes), vous pouvez l'arrêter simplement en bougeant la souris. Une fenêtre s'ouvre alors pour confirmer si le mouvement de la souris était volontaire, et si oui le script s'arrête. A noter qu'une brève apparition (puis disparition) de la fenêtre de création d'une fiche d'aliment ou de l'encart rouge signalant une tentative de loguer un article caché ne constitue PAS un comportement inattendu du script, puisque le script exploite ces particularités pour détourner les quantité et prix des aliments non loguables ailleurs, pour éviter de loguer ces articles. Les astuces employées pour cela dépendent fortement de la taille de la fenêtre du navigateur dans lequel Chocapix est ouvert. Ainsi il est recommandé de choisir le zoom standard et d'ouvrir son navigateur en plein écran pour éviter les problèmes.
 
-Si après plusieurs essais (au moins 3) l'auto-appro continue de produire des comportements bizarres, c'est peut-être que votre navigateur ou votre connexion internet ne permet pas à Chocapix de suivre les instructions envoyées par le script. Par défaut une instruction est envoyée toutes les 0.02 secondes. Pour augmenter ce temps selon vos besoins, vous pouvez par exemple saisir la commande "python be.py facture.pdf appro pause=0.025". Pour modifier ce temps de façon permanente, vous pouvez aussi modifier directement le script be.py : ce temps y est défini par la ligne "gui.PAUSE = 0.02" dans les premières lignes après les imports.
+Si après plusieurs essais (au moins 3) l'auto-appro continue de produire des comportements bizarres, c'est peut-être que votre navigateur ou votre connexion internet ne permet pas à Chocapix de suivre les instructions envoyées par le script. Par défaut une instruction est envoyée toutes les 0.02 secondes. Pour augmenter ce temps selon vos besoins, vous pouvez par exemple saisir la commande `python be.py facture.pdf appro pause=0.025`. Pour modifier ce temps de façon permanente, vous pouvez aussi modifier directement le script be.py : ce temps y est défini par la ligne "gui.PAUSE = 0.02" dans les premières lignes après les imports.
 
-A l'issue de cette phase de remplissage automatique, l'invite de commande peut être fermé et la facture peut être rangée dans le dossier "archive". Un compte-rendu au format .txt est créé, listant tous les changements de prix, à l'exception des articles signalés comme non loggables, ainsi que les articles achetés pour la première fois (en tout cas première fois parmi les factures que le script a vues). Dans ce cas, il n'a pas été logué plus tôt par le script et il va falloir le loguer à la main maintenant. Il n'y a aucun danger à modifier ou supprimer ce compte-rendu, après la fin de l'appro sa vocation est purement informative. Le respo news peut par exemple recopier les changements importants dans l'onglet des nouvelles afin d'informer les membres de sa section sur les bonnes ou mauvaises surprises qui peuvent les attendre en loggant leurs aliments préférés.
+A l'issue de cette phase de remplissage automatique, l'invite de commande peut être fermé et la facture peut être rangée dans le dossier `archive`. Un compte-rendu au format .txt est créé, listant tous les changements de prix, à l'exception des articles signalés comme non loggables, ainsi que les articles achetés pour la première fois (en tout cas première fois parmi les factures que le script a vues). Dans ce cas, il n'a pas été logué plus tôt par le script et il va falloir le loguer à la main maintenant. Il n'y a aucun danger à modifier ou supprimer ce compte-rendu, après la fin de l'appro sa vocation est purement informative. Le respo news peut par exemple recopier les changements importants dans l'onglet des nouvelles afin d'informer les membres de sa section sur les bonnes ou mauvaises surprises qui peuvent les attendre en loggant leurs aliments préférés.
 
 # Utilisation lors d'une appro Cora ou Picard
 
@@ -91,36 +83,36 @@ Dans le cas de Cora et Picard, il n'y a pas de codes-barres dans les factures. C
 
 La meilleure chose à faire est de scanner les codes-barres de tous les articles livrés (sans scanner, il va falloir faire chauffer les touches Ctrl C et V, comme d'habitude), sans regarder si les prix ont changé, puis une fois que c'est fini, lancer le script sur la facture pour obtenir la liste des prix qui ont changé, et mettre à jour à la main ces prix dans Chocapix.
 
-Pour obtenir la liste de tous les articles qui ont changé de prix dans une facture qui s'appelle "facture.pdf", ouvrir un invite de commande et taper :
+Pour obtenir la liste de tous les articles qui ont changé de prix dans une facture qui s'appelle `facture.pdf`, ouvrir un invite de commande et taper :
 
-python be.py facture.pdf
+`python be.py facture.pdf`
 
-C'est à dire la même chose qu'à la section précédente mais sans le mot-clé "appro". Si un message contenant "[MainThread  ] [WARNI]  Failed to see startup log message; retrying..." s'affiche, l'ignorer.
+C'est à dire la même chose qu'à la section précédente mais sans le mot-clé `appro`. Si un message contenant `[MainThread  ] [WARNI]  Failed to see startup log message; retrying...` s'affiche, l'ignorer.
 
-Juste après, un fichier .txt est créé avec un nom du type "compte-rendu_marque_date.txt". C'est là que sont listés les changements de prix.
+Juste après, un fichier .txt est créé avec un nom du type `compte-rendu_marque_date.txt`. C'est là que sont listés les changements de prix.
 
 # Utilisation non attendue du script
 Plusieurs utilisations qui ne rentrent dans aucun des deux cadres cités plus haut (mise à niveau avec l'archive, et appro) peuvent être faites de ce script. Fidèle à la philisophie de Python, "we are all consenting adults here", la plupart de ces cas de figure ne mènent pas à une erreur et peuvent être explorés par un utilisateur curieux. En voici quelques exemples.
 
-Pour lancer le script en mode appro sur une facture qui se trouve dans le dossier archive, il suffit de faire précéder le nom de la facture par "./archive/", comme on pourrait s'y attendre. Rien n'empêche non plus de chercher des fichiers .pdf qui sont en dehors du dossier contenant le script. Il reste donc possible de lancer le script sur une vieille facture, ce qui aura pour conséquence probable de remplacer des prix actuels dans les bases de données de prix par des valeurs dépassées. Aussi, l'éventuel compte-rendu créé n'aura aucun sens puisqu'il montrera les "évolutions" de prix de cette remontée dans le temps. A utiliser avec modération, donc. Pour faire rentrer les choses dans l'ordre, on peut lancer le script sur toutes les factures de la même marque entre celle-là et la plus récente dans l'ordre chronologique, ce qui peut être fait avec la seule commande "python be.py archive".
+Pour lancer le script en mode appro sur une facture qui se trouve dans le dossier archive, il suffit de faire précéder le nom de la facture par `./archive/`, comme on pourrait s'y attendre. Rien n'empêche non plus de chercher des fichiers .pdf qui sont en dehors du dossier contenant le script. Il reste donc possible de lancer le script sur une vieille facture, ce qui aura pour conséquence probable de remplacer des prix actuels dans les bases de données de prix par des valeurs dépassées. Aussi, l'éventuel compte-rendu créé n'aura aucun sens puisqu'il montrera les "évolutions" de prix de cette remontée dans le temps. A utiliser avec modération, donc. Pour faire rentrer les choses dans l'ordre, on peut lancer le script sur toutes les factures de la même marque entre celle-là et la plus récente dans l'ordre chronologique, ce qui peut être fait avec la seule commande `python be.py archive`.
 
-Il est possible d'actualiser les prix et de produire un compte-rendu en dehors du mode appro. Il suffit pour cela de ne fournir aucun des deux mots-clés appro ou archive. Ainsi, au lieu de suivre le paragraphe "Utilisation pour la première fois" à la lettre, on pourra ne mettre dans le dossier archive que les factures de plus d'un mois, et après avoir tapé "python be.py archive", on pourra appeler "python be.py facture.pdf" pour toutes ces factures passées mais récentes, que l'on n'a pas mises dans le dossier archive, et le script produira alors tous les compte-rendus des appros récentes. Le script triera ici aussi les factures par date avant de calculer les évolutions.
+Il est possible d'actualiser les prix et de produire un compte-rendu en dehors du mode appro. Il suffit pour cela de ne fournir aucun des deux mots-clés appro ou archive. Ainsi, au lieu de suivre le paragraphe "Utilisation pour la première fois" à la lettre, on pourra ne mettre dans le dossier archive que les factures de plus d'un mois, et après avoir tapé `python be.py archive`, on pourra appeler `python be.py facture.pdf` pour toutes ces factures passées mais récentes, que l'on n'a pas mises dans le dossier archive, et le script produira alors tous les compte-rendus des appros récentes. Le script triera ici aussi les factures par date avant de calculer les évolutions.
 
-Il est même possible d'actualiser les prix avec une facture en particulier sans compte-rendu ni appro. Pour ça, il faut utiliser le mot-clé "archive" et écrire le nom de la facture. Dans le code du script, mettre le mot-clé archive vérifie d'abord si une facture a été donnée en argument et sinon traite toutes les factures du dossier archive.
+Il est même possible d'actualiser les prix avec une facture en particulier sans compte-rendu ni appro. Pour ça, il faut utiliser le mot-clé `archive` et écrire le nom de la facture. Dans le code du script, mettre le mot-clé `archive` vérifie d'abord si une facture a été donnée en argument et sinon traite toutes les factures du dossier archive.
 
-Il existe un dernier mot-clé, "noedit", utile si au contraire vous souhaitez produire un compte-rendu sans modifier la base de données, dans un contexte de débug par exemple, ou si quelqu'un qui n'a pas les droits de respo appro veut forcer le respo appro à se bouger en lui mettant sous le nez la longue liste des prix qui changent avec cette appro.
+Il existe un dernier mot-clé, `noedit`, utile si au contraire vous souhaitez produire un compte-rendu sans modifier la base de données, dans un contexte de débug par exemple, ou si quelqu'un qui n'a pas les droits de respo appro veut forcer le respo appro à se bouger en lui mettant sous le nez la longue liste des prix qui changent avec cette appro.
 
-Donner en argument le nom de la facture sert à dire au script quel fichier regarder pour mettre à jour sa base de données des prix. Le mode archive ne fait que lancer la fonction principale du script sur la facture donnée en argument, ou à défaut sur la liste de toutes les factures du dossier "archive". Suivant ce principe, il est possible de donner en arguments plusieurs factures à la fois. Elles seront alors toutes traitées les unes à la suite des autres, triées par ordre chronologique.
+Donner en argument le nom de la facture sert à dire au script quel fichier regarder pour mettre à jour sa base de données des prix. Le mode archive ne fait que lancer la fonction principale du script sur la facture donnée en argument, ou à défaut sur la liste de toutes les factures du dossier `archive`. Suivant ce principe, il est possible de donner en arguments plusieurs factures à la fois. Elles seront alors toutes traitées les unes à la suite des autres, triées par ordre chronologique.
 
-Attention à ne pas renommer le dossier "archive" en autre chose et espérer que remplacer le mot-clé "archive" par le nouveau nom de dossier suffira. Le mot-clé n'est pas nommé d'après le dossier, et le nom du dossier que le script tentera d'explorer est hard-codé comme devant être "archive".
+Attention à ne pas renommer le dossier `archive` en autre chose et espérer que remplacer le mot-clé "archive" par le nouveau nom de dossier suffira. Le mot-clé n'est pas nommé d'après le dossier, et le nom du dossier que le script tentera d'explorer est hard-codé comme devant être "archive".
 
 Bouger la souris en mode appro avec Carrefour ou Auchan ou appuyer sur Ctrl+C dans l'invite de commande arrête totalement le script. Comme les changements de prix ne sont enregistrés dans une base de donnée qu'au dernier moment à la fin de l'exécution du script, ces changements ne seront pas encore enregistrés au moment de l'arrêt. Donc si Chocapix plante en plein milieu de l'appro, on peut sans crainte relancer le script, les changements de prix seront encore signalés et les nouveaux articles seront encore considérés nouveaux.
 
 # Quelques bugs ou messages d'erreur exotiques
-- RuntimeError: Unable to start Tika server. (après un traceback et un message d'erreur contenant Unable to run java; is it installed?) Ce problème rencontré avec un WSL Ubuntu a été résolu en installant Java. Pour plus de détails, voir https://stackoverflow.com/questions/36478741/installing-oracle-jdk-on-windows-subsystem-for-linux. Sur un Windows 10 où le même problème a été rencontré et où Java était déjà installé, la solution était d'ajouter le dossier bin de Java au PATH. Le module tika a besoin de Java 7 au moins pour fonctionner.
-- AttributeError: module 'os' has no attribute 'setsid'. Ce problème rencontré avec Windows 10 a été résolu en cherchant directement la ligne du module tika pointée par le message d'erreur complet, et en supprimant l'argument facultatif "preexec_fn=os.setsid" de l'appel de fonction Popen sur cette ligne. Il s'agit d'une erreur du côté de tika qui a été corrigée depuis. Pour plus de détails, voir https://github.com/chrismattmann/tika-python/issues/278.
-- Si un autre message d'erreur se réfère au module tika comme le précédent, simplement supprimer la ligne ou la partie incriminée du module tika.py qui se trouve dans lib/site-packages/tika/ a tendance à résoudre le problème sans en causer d'autres, étonamment. Si cela ne marche toujours pas, rentrer dans un invite de commande "pip uninstall tika" puis "pip install tika==1.19" ou alors dans un shell conda, "\>\>\> conda uninstall tika" puis "\>\>\> conda install tika=1.19", en faisant attention au nombre de "=" qui n'est pas le même pour pip et pour conda. La version 1.19 de tika semble ne pas poser de problème contrairement aux versions plus récentes que ses auteurs ont du mal à rendre cross-platform du premier coup.
-- L'ordinateur redémarre dès que le script commence à s'exécuter. Ce problème rencontré avec un MacOS 10.18 s'explique par le fait que l'autorisation de prendre le contrôle du clavier n'avait pas été donnée à Python. La fenêtre pour régler ces autorisations peut apparaître en tapant dans un shell python >>> import pyautogui as g; g.write("a")
+- `RuntimeError: Unable to start Tika server.` (après un traceback et un message d'erreur contenant Unable to run java; is it installed?) Ce problème rencontré avec un WSL Ubuntu a été résolu en installant Java. Pour plus de détails, voir [ici](https://stackoverflow.com/questions/36478741/installing-oracle-jdk-on-windows-subsystem-for-linux). Sur un Windows 10 où le même problème a été rencontré et où Java était déjà installé, la solution était d'ajouter le dossier bin de Java au PATH. Le module tika a besoin de Java 7 au moins pour fonctionner.
+- `AttributeError: module 'os' has no attribute 'setsid'.` Ce problème rencontré avec Windows 10 a été résolu en cherchant directement la ligne du module tika pointée par le message d'erreur complet, et en supprimant l'argument facultatif `preexec_fn=os.setsid` de l'appel de fonction Popen sur cette ligne. Il s'agit d'une erreur du côté de tika qui a été corrigée depuis. Pour plus de détails, voir [ici](https://github.com/chrismattmann/tika-python/issues/278).
+- Si un autre message d'erreur se réfère au module tika comme le précédent, simplement supprimer la ligne ou la partie incriminée du module `tika.py` qui se trouve dans lib/site-packages/tika/ a tendance à résoudre le problème sans en causer d'autres, étonamment. Si cela ne marche toujours pas, rentrer dans un invite de commande `pip uninstall tika` puis `pip install tika==1.19` ou alors dans un shell conda, `>>> conda uninstall tika` puis `>>> conda install tika=1.19`, en faisant attention au nombre de "=" qui n'est pas le même pour pip et pour conda. La version 1.19 de tika semble ne pas poser de problème contrairement aux versions plus récentes que ses auteurs ont du mal à rendre cross-platform du premier coup.
+- L'ordinateur redémarre dès que le script commence à s'exécuter. Ce problème rencontré avec un MacOS 10.18 s'explique par le fait que l'autorisation de prendre le contrôle du clavier n'avait pas été donnée à Python. La fenêtre pour régler ces autorisations peut apparaître en tapant dans un shell python `>>> import pyautogui as g; g.write("a")`
 
 # Fonctionnalités futures envisagées
 - Prise en charge de Intermarché

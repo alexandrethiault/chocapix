@@ -23,7 +23,7 @@ contact = "Alexandre Thiault"  # Consulter le README avant de le contacter
 
 # Mot qui donne fiablement l'origine de la facture si on le trouve dedans
 keyword = {
-    "carrefour": "Z.I Route de Paris",
+    "carrefour": "I ROUTE DE PARIS",
     "auchan": "Auchan Direct",
     "cora_f": "Facture coradrive",
     "cora_r": "Récapitulatif de commande coradrive",
@@ -261,7 +261,7 @@ def get_from_pdf(filename):
     raw = parser.from_file(filename)
     string = raw["content"]
     for br in brands:
-        if keyword[br] in string:
+        if keyword[br].lower() in string.lower():
             brand = br
             break
     else:
@@ -299,7 +299,7 @@ def get_from_pdf(filename):
 
 def get_from_source(string):
     for br in brands:
-        if keyword[br] in string:
+        if keyword[br].lower() in string.lower():
             brand = br
             break
     else:
