@@ -423,6 +423,7 @@ def show_and_log(article, pricechange=False):
             gui.press('tab')
             gui.typewrite(str((article.price)).replace('.', ','))  # kbconvert ici
             gui.hotkey('shift', 'tab')
+            sleep(gui.PAUSE*10)  # Laisser l'overlay arriver
         gui.press('return')
         sleep(gui.PAUSE*5)  # Laisser l'encart rouge partir
         gui.typewrite(str((article.qty)).replace('.', ','))  # kbconvert ici
@@ -569,9 +570,9 @@ if __name__ == "__main__":
             if archive and not pdfbills+twobilldirs:
                 for filename in os.listdir("archive"):
                     if filename.endswith(".pdf"):
-                        pdfbills.append(os.path.join("archive","filename"))
-                    else:
-                        twobilldirs.append(os.path.join("archive","filename"))
+                        pdfbills.append(os.path.join("archive", filename))
+                    elif os.path.isdir(filename):
+                        twobilldirs.append(os.path.join("archive", filename))
             parsedbills = [get_from_pdf(filename) for filename in pdfbills]
             for dir in twobilldirs:
                 bills = [os.path.join(dir,bill) for bill in os.listdir(dir) if bill[-4:]==".pdf" or bill[-5:]==".html"]
