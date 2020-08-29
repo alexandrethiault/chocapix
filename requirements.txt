@@ -1,2 +1,2 @@
 PyAutoGUI==0.9.48
-tika=1.19
+tika==1.19
