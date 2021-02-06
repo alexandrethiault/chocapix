@@ -3,21 +3,24 @@
 
 import os, sys
 import re
-#import webbot  # Utile que pour la fonctionnalité abandonnée get_from_web
-import pyautogui as gui
-
+import logging
 from time import time, sleep
-from tika import parser
 
-### Variables globales
+from getpass import getpass
+from tika import parser, tika
+logging.getLogger('tika.tika').setLevel(logging.FATAL)
 
-gui.PAUSE = 0.02  # Temps entre chaque action du mode auto (>=0.02!)
-
-brands = ["carrefour", "auchan", "cora_f", "cora_r", "houra", "picard",]
-fullauto = ["carrefour", "auchan", "houra_html",]
+import selenium
+from selenium import webdriver
+from selenium.webdriver.common.keys import Keys
+if os.name == 'nt':
+    import subprocess
+    import winreg
+    from msedge.selenium_tools import Edge, EdgeOptions
 
 repository = "https://github.com/alexandrethiault/chocapix"
-contact = "Alexandre Thiault"  # Consulter le README avant de le contacter
+
+brands = ["carrefour", "auchan", "houra",]
 
 ### Parsing
 
@@ -25,55 +28,25 @@ contact = "Alexandre Thiault"  # Consulter le README avant de le contacter
 keyword = {
     "carrefour": "I ROUTE DE PARIS",
     "auchan": "Auchan Direct",
-    "cora_f": "Facture coradrive",
-    "cora_r": "Récapitulatif de commande coradrive",
     "houra": "houra.fr",
-    "picard": "SIRET : 78493968805071",
 }
 
 # Emplacement de la date dans le raw parse de la facture
 finddate = {
     "carrefour": (lambda s: s[s.find("Date de commande : ")+19:s.find("Date de commande : ")+29]),
     "auchan": (lambda s: s[s.find("FACTURE N° ")+32:s.find("FACTURE N° ")+42]),
-    "cora_f": (lambda s: s[s.find(", le ")+5:s.find(", le ")+15]),
-    "cora_r": (lambda s: s[s.find("Livraison ")+13:s.find("Livraison ")+23]),
     "houra": (lambda s: s[s.find("Réf. p")-45:s.find("Réf. p")-35]),
-    "picard": (lambda s: s[s.find("DATE : ")+7:s.find("DATE : ")+17]),
 }
 
 # Indicateurs préliminaire qu'un article commence peut-être à cette ligne
 def article_with_code(length, line):
     return len(line) >= length and line[:length].isdigit()
 
-def article_cora_r(line):
-    if not line: return False
-    if "Qté Remise Total TTC" in line: return False
-    if "Récapitulatif" in line: return False
-    if "Total articles :" in line: return False
-    if "Frais de " in line: return False
-    return True
-
 is_article = {
     "carrefour": (lambda line: article_with_code(13, line)),
     "auchan": (lambda line: article_with_code(13, line)),
-    "cora_f": (lambda line: line and "Frais de " not in line),
-    "cora_r": article_cora_r,
-    "picard": (lambda line: article_with_code(6, line)),
     "houra": (lambda line: line.find(" ")>=4 and line[:line.find(" ")].isdigit()),
 }
-
-"""
-def log_in(brand, web, auth):
-    if brand == "houra":
-        web.go_to('houra.fr')
-        for key,value in auth.items():
-            web.type(value , id=key)
-        web.press(web.Key.ENTER)
-        sleep(1)
-        web.press(web.Key.ESCAPE)
-    else:
-        raise NotImplementedError(brand)
-"""
 
 def new_parsing(filename):
     # Pour apprendre à parser des nouvelles marques dont la facture est en pdf
@@ -167,42 +140,6 @@ class Article:
             self.qty = int(line[-6])
             self.TVA = float(line[-2])
             self.price = round(float(line[-5]) * (1. + self.TVA*0.01), 2)
-        elif brand == "cora_f":
-            shift = -2 if line[-6] == "€" else 0
-            assert line[-1] == "€" and line[-3] == "€"
-            TVAcode = line[-5]
-            self.TVA = 5.50 if TVAcode == "3" else 20.00
-            if "€/kg" in line:
-                i = line.index("€/kg")
-                self.name = " ".join(line[:i-3])
-                self.price = float(line[i-1])
-                qty = line[i-3]
-                assert qty.endswith("g")
-                if qty.endswith("kg"):
-                    self.qty = float(qty[:-2])
-                else:
-                    self.qty = round(float(qty[:-1])*0.001, 3)
-            else:
-                self.name = " ".join(line[:-8 + shift])
-                self.price = float(line[-8 + shift])
-                self.qty = int(line[-6 + shift])
-        elif brand == "cora_r":
-            shift = -2 if line[-6] == "€" else 0  # Remise
-            assert line[-1] == "€" and line[-4 + shift] == "€"
-            if "€/kg" in line:
-                i = line.index("€/kg")
-                self.name = " ".join([wrd for wrd in line[:i-3] if wrd])
-                self.price = float(line[i-1])
-                qty = line[i-3]
-                assert qty.endswith("g")
-                if qty.endswith("kg"):
-                    self.qty = float(qty[:-2])
-                else:
-                    self.qty = round(float(qty[:-1])*0.001, 3)
-            else:
-                self.qty = int(line[-3 + shift])
-                self.price = float(line[-5 + shift])
-                self.name = " ".join([wrd for wrd in line[:-7 + shift] if wrd])
         elif brand == "houra_html":
             j=line.index('alt="') # alt="0123456789012 - MARQUE - Nom" title=...
             k=line.index('" title="')
@@ -226,25 +163,8 @@ class Article:
             self.qty = float(line[-5].replace(',','.'))
             self.price = float(line[-2].replace(',','.'))
             self.TVA = float(line[-3].replace(',','.'))
-        elif brand == "picard":
-            # line[0] n'est pas un code-barres
-            if line[-1] == "OFFERT":
-                line[-1:] = ["0,00", "€", "0,00", "€", "0,00%"]
-            assert line[-2] == "€" and line[-4] == "€"
-            self.name = " ".join([wrd for wrd in line[1:-6] if wrd])
-            if ',' in line[-6]:
-                self.qty = float(line[-6].replace(',', '.'))
-            else:
-                self.qty = int(line[-6])
-            self.price = float(line[-5].replace(',', '.'))
-            self.TVA = float(line[-1][:-1].replace(',', '.'))
         else:
             raise NotImplementedError(brand)
-        if brand in fullauto:
-            self.ref = self.sernumber
-        else:
-            self.sernumber = "-"
-            self.ref = self.name[:30]
 
     def __repr__(self):
         return f"{self.sernumber} {self.name} - Qté : {self.qty} - Prix : {self.price}"  # Si cette ligne cause une SyntaxError, c'est que la version de Python utilisée n'est pas >= 3.6 !
@@ -258,6 +178,7 @@ def stddate(jjmmaaaa):
 
 def get_from_pdf(filename):
     # Récupérer la date, la marque et tous les articles de la facture filename
+    print("\nParsing du PDF en cours...")
     raw = parser.from_file(filename)
     string = raw["content"]
     for br in brands:
@@ -276,10 +197,7 @@ def get_from_pdf(filename):
     while i < len(lines):
         if is_article[brand](lines[i]):
             line = lines[i].split(" ")
-            # Seuls les articles cora_r sont sur des lignes consécutives
-            tcr = (line[-1] != "€")
-            tno = (i+1 < len(lines) and lines[i+1].split(" ") != [''])
-            if (brand == "cora_r" and tcr) or (brand != "cora_r" and tno):
+            if i+1 < len(lines) and lines[i+1].split(" ") != ['']:
                 # Certains articles sont sur plusieurs lignes
                 while i+1 < len(lines) and lines[i+1].split(" ") != ['']:
                     i += 1
@@ -295,15 +213,20 @@ def get_from_pdf(filename):
             except (ValueError, IndexError, AssertionError) as e:
                 pass
         i += 1
+    print("Succès")
     return date, brand, articles
 
-def get_from_source(string):
+def get_from_html(htmlname):
+    string=""
+    with open(htmlname) as f:
+        for line in f.readlines():
+            string+=line
     for br in brands:
         if keyword[br].lower() in string.lower():
             brand = br
             break
     else:
-        raise NotImplementedError(filename)
+        raise NotImplementedError(htmlname)
     articles=[]
     if brand=="houra":
         article_pattern='<div class="row no-padding">\n    \n        <div'
@@ -314,26 +237,8 @@ def get_from_source(string):
             article.brand = "houra"
             articles.append(article)
     else:
-        raise NotImplementedError(filename)
+        raise NotImplementedError(htmlname)
     return brand, articles
-
-def get_from_html(htmlname):
-    string=""
-    with open(htmlname) as f:
-        for line in f.readlines():
-            string+=line
-    return get_from_source(string)
-
-"""
-def get_from_web_houra(idPanier): #articles = get_from_web(55006015)
-    auth = {'Email': input("Email ? "), 'Pass': input("Mot de passe ? "), "CPClient": "91120"}
-    web = webbot.Browser()
-    log_in("houra", web, auth)
-    web.go_to(f"https://www.houra.fr/cpt/index.php?c=ancienne-commande&idPanier={idPanier}")
-    page_source = web.get_page_source()
-    web.close_current_tab()
-    return get_from_source(page_source)
-"""
 
 def merge(dir, parsedpdf, parsedhtml):
     date, brand, ap = parsedpdf
@@ -375,90 +280,207 @@ def merge(dir, parsedpdf, parsedhtml):
 
     details.sort(key=lambda a:a[2])
     with open(os.path.join(dir,"detail_association_noms.txt"), 'w') as f:
-        f.write("--- Fichier généré automatiquement ---\n\nUne étape du loguage des factures Houra est la fusion des attributs de deux factures.\nLa seule clé primaire utilisable est le nom, et il y a des différences dans les noms des deux factures.\nPour associer les paires de noms ensembles, le script fait des suppositions pas toujours sures.\nVoici le détail des associations faites.\n\nLes paires de noms sont précédées d'un indice de ressemblance.\nLes bas indices (4 ou moins) sont ceux qui doivent retenir l'attention.\nSi une association se révèle en effet fautive, la quantité et le prix logués peuvent être faux.\nVérifiez alors sur la facture PDF pour récupérer les vraies valeurs.\n\n")
+        f.write("--- Fichier généré automatiquement ---\n\nUne étape du loggage des factures Houra est la fusion des attributs de deux factures.\nLa seule clé primaire utilisable est le nom, et il y a des différences dans les noms des deux factures.\nPour associer les paires de noms ensembles, le script fait des suppositions pas toujours sures.\nVoici le détail des associations faites.\n\nLes paires de noms sont précédées d'un indice de ressemblance.\nLes bas indices (4 ou moins) sont ceux qui doivent retenir l'attention.\nSi une association se révèle en effet fautive, la quantité et le prix loggés peuvent être faux.\nVérifiez alors sur la facture PDF pour récupérer les vraies valeurs.\n\n")
         for detail in details:
             f.write("\n".join(detail)+"\n")
 
     return date, brand, ah
 
-### Affichages et prise de contrôle du clavier pour loguer, que si appro = True
+### Navigateur robot, loggage d'un aliment dans chocapix
 
-def alert_start():
-    # Prévenir du début imminent de l'appro
-    gui.alert("A partir du moment où vous fermerez cette fenêtre, vous aurez 3 secondes pour aller dans le menu appro, scroll en haut, cliquer au milieu de la case du nom d'aliment, en évitant de faire sortir la souris en dehors de la case juste après. Au bout des 3 secondes, l'appro commencera.\nPour rappel, le script s'arrête par mouvement de la souris.", "Début de l'appro")
-    sleep(3)
+def init_driver_edge_windows():
+    edge_options = EdgeOptions()
+    edge_options.use_chromium = True
+    #edge_options.add_argument('headless')
+    #edge_options.add_argument('disable-gpu')
+    try:
+        return Edge(executable_path=r"./driver/msedgedriver", options=edge_options)
+    except:
+        if os.path.isdir("driver"):
+            subprocess.call(["rd" "/s" "/q", "driver"], shell=True)
+        os.mkdir("driver")
+        try:
+            keyPath = r"Software\Microsoft\Edge\BLBeacon"
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, keyPath, 0, winreg.KEY_READ)
+            edge_version = winreg.QueryValueEx(key, "version")[0]
+            OS = "64" if 'PROGRAMFILES(X86)' in os.environ else "32"
+            subprocess.call(["curl", "-o", "tmp.zip",  f"https://msedgedriver.azureedge.net/{edge_version}/edgedriver_win{OS}.zip"])
+            subprocess.call(["tar", "-xf", "tmp.zip"])
+            subprocess.call(["del", "tmp.zip"], shell=True)
+            subprocess.call(["move", "msedgedriver.exe", "driver"], shell=True)
+            subprocess.call(["rd" "/s" "/q", "Driver_Notes"], shell=True)
+            return Edge(executable_path=r".\driver\msedgedriver.exe", options=edge_options)
+        except:
+            os.rmdir("driver")
+            raise NotImplementedError('Une erreur a été rencontrée. Cela peut avoir été causé par une version de Edge obsolète. Mettez le navigateur à jour.')
 
-def confirm_end():
-    # Prévenir de la fin de la partie automatique de l'appro
-    return "OK" == gui.confirm("L'auto-appro est terminée, l'invite de commande peut être fermé.\nLes nouveaux prix ont déjà été changés sur Chocapix, et seront enregistrés dans la base de données du script avec le bouton OK.\nIl reste encore à ajouter manuellement les nouveaux articles. Ils sont listés dans le compte-rendu de l'appro.\nPour annuler les modifications, appuyer sur Annuler.", "Fin de l'auto-appro")
+def init_driver_firefox():
+    try:
+        return webdriver.Firefox(executable_path="./driver/geckodriver", service_log_path=os.devnull)
+    except selenium.common.exceptions.WebDriverException:
+        raise Exception('Firefox ou geckodriver manquant ou obsolète. Si Firefox est installé, mettez-le à jour, installez le dernier geckodriver à https://github.com/mozilla/geckodriver/releases et rangez-le dans un dossier nommé "driver"')
 
-def pause_script(newpos, posref):
-    if newpos != posref:
-        msg = gui.confirm(text="Pause invoquée par mouvement de la souris\nOK pour continuer l'exécution du script\nCancel pour l'interrompre définitivement.")
-        if msg == "OK":
-            gui.press('pageup')
-            sleep(0.5)
-            gui.moveTo(posref[0], posref[1])
-            gui.click()
-            sleep(0.5)
-        else:
-            raise KeyboardInterrupt
+def init_driver_opera():
+    options = selenium.webdriver.opera.options.Options()
+    options.add_argument('log-level=3')
+    try:
+        return webdriver.Opera(options=options,executable_path="./driver/operadriver")
+    except selenium.common.exceptions.WebDriverException:
+        raise Exception('Opera ou son driver est manquant ou obsolète. Si Opera est installé, mettez-le à jour, installez son dernier driver à https://github.com/operasoftware/operachromiumdriver/releases et rangez-le dans un dossier nommé "driver"')
 
-def kbconvert(string):
-    return ''.join([[")",'!','"',"£","$","%","^","&","*","("][int(i)] if i.isdigit() else i for i in string])
+def init_driver_chrome():
+    try:
+        return webdriver.Chrome(executable_path="./driver/chromedriver")
+    except selenium.common.exceptions.WebDriverException:
+        raise Exception('Chrome ou son driver est manquant ou obsolète. Si Chrome est installé, mettez-le à jour, installez son dernier driver à https://chromedriver.chromium.org/downloads et rangez-le dans un dossier nommé "driver"')
 
-def show_and_log(article, pricechange=False):
-    # Afficher un article dans l'invite de commande, et en fullauto, le loguer
-    if article.brand in fullauto:
-        print(f"{article.sernumber} - {article.qty}\t{article.name}")
-        pos = gui.position()
-        gui.typewrite((article.ref))  # kbconvert ici
-        pause_script(gui.position(), pos)
-        gui.press('return')
-        sleep(gui.PAUSE*10)  # Laisser l'overlay arriver
-        pause_script(gui.position(), pos)
-        gui.click()
-        gui.press('tab')
-        if pricechange:
-            gui.press('tab')
-            gui.typewrite(str((article.price)).replace('.', ','))  # kbconvert ici
-            gui.hotkey('shift', 'tab')
-            sleep(gui.PAUSE*10)  # Laisser l'overlay arriver
-        gui.press('return')
-        sleep(gui.PAUSE*5)  # Laisser l'encart rouge partir
-        gui.typewrite(str((article.qty)).replace('.', ','))  # kbconvert ici
-        pause_script(gui.position(), pos)
-        gui.click()
-        gui.press('esc')
-        sleep(gui.PAUSE*10)  # Laisser l'overlay partir
-        gui.press('backspace', len(article.ref), gui.PAUSE)
-        pause_script(gui.position(), pos)
+def init_driver():
+    try:
+        print("\nLancement d'un driver Firefox...")
+        return init_driver_firefox()
+    except Exception as e:
+        print("Echec du lancement de Firefox, message d'erreur :\n", e)
+        try:
+            print("Lancement d'un driver Opera...")
+            return init_driver_opera()
+        except Exception as e:
+            print("Echec du lancement de Opera, message d'erreur :\n", e)
+        if os.name == 'nt':
+            try:
+                print("Lancement d'un driver Edge...")
+                return init_driver_edge_windows()
+            except Exception as e:
+                print("Echec du lancement de Edge, message d'erreur :\n", e)
+        try:
+            print("Lancement d'un driver Chrome...")
+            return init_driver_chrome()
+        except Exception as e:
+            print("Echec du lancement de Chrome, message d'erreur :\n", e)
+    raise NotImplementedError(f"Echec de toutes les tentatives de lancement de driver. Réglez les problèmes pour au moins un de ces navigateurs : Opera, Firefox{', Edge' if os.name == 'nt' else ''} ou Chrome")
+
+def log_in(driver, name, pw):
+    name_box = '/html/body/div[1]/div/div[1]/div/nav/div/div/div[3]/div/form/input[1]'
+    pw_box = '/html/body/div[1]/div/div[1]/div/nav/div/div/div[3]/div/form/input[2]'
+    login_button = '/html/body/div[1]/div/div[1]/div/nav/div/div/div[3]/div/form/button'
+    driver.find_element_by_xpath(name_box).clear()
+    driver.find_element_by_xpath(pw_box).clear()
+    driver.find_element_by_xpath(name_box).send_keys(name)
+    driver.find_element_by_xpath(pw_box).send_keys(pw)
+    driver.find_element_by_xpath(pw_box).send_keys(Keys.RETURN)
+
+def start_appro(driver):
+    appro_button = '/html/body/div[1]/div/div[3]/div[2]/div/div/div/div/div[2]/div/div[4]/div/div[1]/span/a'
+    driver.find_element_by_xpath(appro_button).click()
+
+def launch_appro_and_parse_bills(pdfbills):
+    global driver
+    # Lancer un navigateur robot et y lancer une appro
+    try:
+        print("\nRécupération des identifiants dans login.txt...")
+        f = open("login.txt", "r")
+        name, pw = f.read().rstrip("\n").split()[:2]
+        f.close()
+        print("Succès")
+    except FileNotFoundError as e:
+        print("Echec : aucun login.txt présent. Connexion manuelle.")
+        name, pw = input("Nom d'utilisateur : "), getpass("Mot de passe : ")
+    except:
+        f.close()
+        print("Echec : problème de lecture de login.txt. Connexion manuelle.")
+        name, pw = input("Nom d'utilisateur : "), getpass("Mot de passe : ")
+
+    if name != "debug":
+        driver = init_driver()
+        print("Succès")
+        try:
+            driver.implicitly_wait(15)
+            driver.get("https://chocapix.binets.fr/#/badmintonrouje")
+            # Lancer chocapix est très lent donc on parse les PDF en attendant
+            parsedbills = [get_from_pdf(filename) for filename in pdfbills]
+            log_in(driver, name, pw)
+        except:
+            driver.quit()
+            raise selenium.common.exceptions.NoSuchElementException("Impossible d'accéder à chocapix. Peut-être un problème de connexion à eduroam ?")
+        try:
+            driver.implicitly_wait(2)
+            start_appro(driver)
+        except:
+            driver.quit()
+            raise selenium.common.exceptions.NoSuchElementException(f"Impossible d'accéder au menu de l'appro. Peut-être un mauvais mot de passe ou un problème de droits pour l'utilisateur {name} ?")
     else:
-        print(f"{article.qty}\t{article.name}")
+        parsedbills = [get_from_pdf(filename) for filename in pdfbills]
+    return parsedbills
 
-### Lecture de la facture parsée, mise à jour des prix, compte-rendu
+def log(article, driver, last_escape):
+    barcode, qty, price = article.sernumber, article.qty, article.price
+    barcode_box = '//*[@id="addApproItemInput"]'
+    blocked_test = '/html/body/div[1]/div/div[3]/div[2]/div/div/div/div/ui-view/div/div/div[1]/div/span'
+    qty_box = '/html/body/div[1]/div/div[3]/div[2]/div/div/div/div/ui-view/div/div/div/table/tbody/tr[2]/td[2]/input'
+    price_box = '/html/body/div[1]/div/div[3]/div[2]/div/div/div/div/ui-view/div/div/div/table/tbody/tr[2]/td[3]/input'
+
+    # Rentrer le prochain code-barres
+    driver.find_element_by_xpath(barcode_box).clear()
+    driver.find_element_by_xpath(barcode_box).send_keys(barcode)
+    driver.find_element_by_xpath(barcode_box).send_keys(Keys.RETURN)
+    # Appuyer sur echap au cas où une fenêtre de nouvel aliment est apparue
+    sleep(max(0, 0.35 - (time() - last_escape)))
+    webdriver.ActionChains(driver).send_keys(Keys.ESCAPE).perform()
+    last_escape = time()
+    # Tester si c'est un nouvel aliment
+    if driver.find_element_by_xpath(barcode_box).get_attribute('value'):
+        driver.find_element_by_xpath(barcode_box).clear()
+        return -1, last_escape
+    # Tester si c'est un aliment bloqué
+    driver.implicitly_wait(0.2) # Changer le timeout des fonctions find_...
+    try:
+        driver.find_element_by_xpath(blocked_test).click()
+        return -2, last_escape
+    except:
+        pass
+    driver.implicitly_wait(2)
+    # Remplir les champs de quantité et prix
+    former_price = driver.find_element_by_xpath(price_box).get_attribute('value')
+    former_price = float(former_price.replace(",","."))
+    driver.find_element_by_xpath(price_box).clear()
+    driver.find_element_by_xpath(price_box).send_keys(str(price).replace(".",","))
+    driver.find_element_by_xpath(qty_box).clear()
+    driver.find_element_by_xpath(qty_box).send_keys(qty)
+    # Attendre que ces champs aient obtenu leurs valeurs
+    while str(qty) != driver.find_element_by_xpath(qty_box).get_attribute('value'):
+        sleep(0.01)
+    return former_price, last_escape
+
+### Lecture de la facture parsée, mise à jour de la base de données, compte-rendu
 
 def group_by_sernum(articles):
     # Plusieurs articles d'une facture peuvent concerner un même aliment
     ans = {}
     for article in articles:
-        if article.ref in ans:
-            ans[article.ref].qty += article.qty
-            ans[article.ref].qty = round(ans[article.ref].qty, 3)
+        if article.sernumber in ans:
+            ans[article.sernumber].qty += article.qty
+            ans[article.sernumber].qty = round(ans[article.sernumber].qty, 3)
         else:
-            ans[article.ref] = article
+            ans[article.sernumber] = article
     return list(ans.values())
 
-def update_prices(parsedfile, dir=None):
-    global edit
+def confirm_end():
+    ok = ["y","o","yes","oui"]
+    no = ["n","no","non"]
+    ans = ""
+    while ans not in ok+no:
+        ans = input("\nEnregistrer les modifications de prix et nouveaux aliments dans la base de données du script ? Ceci n'est pas la même chose que valider l'appro sur chocapix.\n(y/n) : ").lower()
+    return ans in ok
+
+def auto_appro(parsedfile, dir=None):
+    global driver
     date, brand, articles = parsedfile
     if not articles:
         raise NotImplementedError(brand+"0")
     if len(brand) >= 2 and brand[-2] == '_':  # "cora_f", "cora_r"...
         brand = brand[:-2]
 
-    # Récupérer les données de la base de données des prix si elle existe
-    codes = {}
+    # Lire la base de données des prix
+    codes = set()
     prices = {}
     names = {}
     hidden = set()
@@ -468,112 +490,126 @@ def update_prices(parsedfile, dir=None):
             for line in lines:
                 wl, code, price = line[:3]
                 name = " ".join(line[3:])
-                key = code if code != "-" else name[:30]
-                prices[key] = float(price)
-                names[key] = name
-                codes[key] = code
-                if wl >= "1":
-                    hidden.add(key)
+                codes.add(code)
+                prices[code] = float(price)
+                names[code] = name
+                if wl > "0":
+                    hidden.add(code)
     except:
         pass
 
-    # Scanner tous les articles, les confronter avec la base de données
-    if appro and brand in fullauto:
-        alert_start()
+
+    # Logger tous les articles
     newarticles = []
     newprices = []
+    blocked = []
+    nonloggable = []
     articles = group_by_sernum(articles)
+    esc = 0
     for article in articles:
+        # Ancien prix selon la base de données (ou -1 si article inconnu)
+        if article.sernumber in prices:
+            former_price = prices[article.sernumber]
+        else:
+            former_price = -1
+        # Mise à jour de prices et names, pas encore de la base de données
+        prices[article.sernumber] = article.price
+        names[article.sernumber] = article.name
+        # Quantité = 0 : on passe
         if article.qty == 0:
             continue
-        if article.ref in prices:
-            if article.ref not in hidden:
-                former_price = prices[article.ref]
-                if appro:
-                    show_and_log(article, article.price != former_price)
-                if article.price != former_price:
-                    newprices.append((former_price, article))
-        else:
-            newarticles.append(article)
-        codes[article.ref] = article.sernumber
-        prices[article.ref] = article.price
-        names[article.ref] = article.name
-    if appro and brand in fullauto and not confirm_end():
-        edit = False
+        # Article considéré comme non loggable : on passe mais ça va dans le compte rendu au cas où le respo appro veut quand même logger ça
+        if article.sernumber in hidden:
+            nonloggable.append(article)
+            continue
+        # Afficher l'article loggé dans la console, le logguer
+        #print(f"{article.sernumber} - {article.qty}\t{article.name}")
+        if driver is not None: # en mode debug, driver est None
+            former_price, esc = log(article, driver, esc) # même si on connait le prix via la base de données, le prix de chocapix fait foi
+        # Changement de prix : ça va dans le compte rendu
+        if former_price >= 0 and article.price != former_price:
+            newprices.append((former_price, article))
+        # Nouvel article selon chocapix, pas forcément selon la base de données
+        elif former_price == -1:
+            if article.sernumber in codes: # Cet article a déjà été vu par le script mais pas loggé par le respo appro : considéré non loggable.
+                hidden.add(article.sernumber)
+                nonloggable.append(article)
+            else: # Nouvel article pour chocapix et le script
+                newarticles.append(article)
+        # Article bloqué, pas loggable
+        elif former_price == -2:
+            blocked.append(article)
+
+        codes.add(article.sernumber) # On peut le faire qu'à la fin pour permettre le test de l'article non loggable inconnu de chocapix mais déjà acheté
 
     # Lister et créer un compte rendu des changements de prix...
-    if not archive:
-        crname = f"compte-rendu_{brand}_{date}.txt"
-        if dir is not None: crname = os.path.join(dir, crname)
-        with open(crname, "w") as cr:
-            cr.write("--- Fichier généré automatiquement ---\n")
-            if newprices:
-                cr.write("\nEvolutions de prix, déjà notées dans Chocapix, à titre informatif :\n")
-            for (former_price, article) in newprices:
-                cr.write(f"{article.name} : évolution de {former_price} à {article.price}\n")
-            if newarticles:
-                cr.write("\nNouveaux articles, pas encore notés dans Chocapix, à loguer à la main :\n")
-            for article in newarticles:
-                cr.write(f"{article}\n")
+    crname = f"compte-rendu_{brand}_{date}.txt"
+    if dir is not None: crname = os.path.join(dir, crname)
+    with open(crname, "w") as cr:
+        cr.write("--- Fichier généré automatiquement ---\n")
+        if newprices:
+            cr.write("\nEvolutions de prix, déjà notées dans Chocapix, à titre informatif :\n")
+        for (former_price, article) in newprices:
+            cr.write(f"{article.name} : évolution de {former_price} à {article.price}\n")
+        if newarticles:
+            cr.write("\nNouveaux articles, pas encore notés dans Chocapix, à logger à la main :\n")
+        for article in newarticles:
+            cr.write(f"{article}\n")
+        if blocked:
+            cr.write("\nArticles bloqués, impossibles à logger :\n")
+        for article in blocked:
+            cr.write(f"{article}\n")
+        if nonloggable:
+            cr.write("\nArticles que le script considère comme correspondant à des aliments non loggables, non loggés :\n")
+        for article in nonloggable:
+            cr.write(f"{article}\n")
 
-    # Réécrire une base de données des prix à la place de l'ancienne
-    if edit:
-        with open(f"prix_{brand}.txt", "w", encoding="utf-8") as newfile:
-            lines = []
-            for ref, price in prices.items():
-                lines.append(f"{1*(ref in hidden)} {codes[ref]} {price} {names[ref]}\n")
-            lines.sort(key=lambda st: st[2:])  # ça sert qu'à aider le débug
-            for line in lines:
-                newfile.write(line)
+    print("\nEcriture du compte-rendu de l'appro terminée.\nL'auto-appro est terminée.\nLes nouveaux prix ont déjà été changés sur Chocapix.\nIl reste encore à ajouter manuellement les nouveaux articles.\nIls sont listés dans le compte-rendu de l'auto-appro.")
+
+    if not confirm_end():
+        return
+
+    # Ecrire une nouvelle base de données
+    with open(f"prix_{brand}.txt", "w", encoding="utf-8") as newfile:
+        lines = []
+        for code, price in prices.items():
+            lines.append(f"{1*(code in hidden)} {code} {price} {names[code]}\n")
+        lines.sort(key=lambda st: st[2:]) # Trier par code-barres
+        for line in lines:
+            newfile.write(line)
 
 ### Recueil des arguments donnés dans le shell, gestion des erreurs
 
 if __name__ == "__main__":
     def main():
-        global appro, archive, edit
-        appro = False
-        archive = False
-        edit = True
+        global driver
+        driver = None
 
-        entrypoint = update_prices
         pdfbills = []
         twobilldirs = []
         while len(sys.argv) > 1:
             opt = sys.argv[1]
-            if opt == "appro":
-                if os.path.isdir("appro"):
-                    sys.exit("appro ne doit pas être le nom d'un dossier.")
-                appro = True
-            elif opt == "archive":
-                archive = True
-            elif opt == "noedit":
-                edit = False
-            elif opt.startswith("pause="):
-                gui.PAUSE = float(opt[6:].replace(",", "."))
-                if gui.PAUSE < 0.02 or gui.PAUSE > 0.1:
-                    sys.exit("Il est recommandé de choisir une pause entre 0.02 et 0.1 seconde.")
-            elif opt.endswith(".pdf"):
+            if opt.endswith(".pdf"):
                 pdfbills.append(opt)
             elif os.path.isdir(opt):
                 if len([i for i in os.listdir(opt) if i[-4:]==".pdf"]) != 1\
                 or len([i for i in os.listdir(opt) if i[-5:]==".html"]) != 1:
-                    sys.exit("Donner en argument un dossier autre que archive sert à donner une facture PDF et une facture HTML de Houra. Vérifiez que le dossier contient ces deux factures et pas d'autres fichiers PFD ou HTML.")
+                    sys.exit("Donner en argument un dossier sert à donner une facture PDF et une facture HTML de Houra. Vérifiez que le dossier contient ces deux factures et pas d'autres fichiers PDF ou HTML.")
                 twobilldirs.append(opt)
             else:
                 sys.exit(f"Option \"{sys.argv[1]}\" inconnue.")
             sys.argv.pop(1)
-        if appro and archive:
-            sys.exit("appro et archive ne peuvent être utilisés en même temps")
 
         try:
             start_time = time()
-            if archive and not pdfbills+twobilldirs:
-                for filename in os.listdir("archive"):
-                    if filename.endswith(".pdf"):
-                        pdfbills.append(os.path.join("archive", filename))
-                    elif os.path.isdir(filename):
-                        twobilldirs.append(os.path.join("archive", filename))
-            parsedbills = [get_from_pdf(filename) for filename in pdfbills]
+            print("\nDémarrage du serveur tika pour parser des PDF...")
+            tika.TikaStartupMaxRetry = 0
+            try:tika.checkTikaServer() # Ca VA foirer. Mais ça va lancer le serveur dès maintenant et donc il sera prêt à la fin de la connexion à chocapix
+            except:pass
+            print("Succès")
+            tika.TikaStartupSleep = 0.3
+            tika.TikaStartupMaxRetry = 50
+            parsedbills = launch_appro_and_parse_bills(pdfbills)
             for dir in twobilldirs:
                 bills = [os.path.join(dir,bill) for bill in os.listdir(dir) if bill[-4:]==".pdf" or bill[-5:]==".html"]
                 if bills[1][-1]=="f": bills=bills[::-1]
@@ -582,10 +618,8 @@ if __name__ == "__main__":
                 parsedbills.append(merge(dir, parsedpdf, parsedhtml))
             parsedbills.sort()
             for parsedbill in parsedbills:
-                entrypoint(parsedbill)
-            if pdfbills+twobilldirs:
-                print("\n" + ("Base de données des prix mise à jour. " if edit else "") + ("" if archive else "Ecriture du compte-rendu des évolutions de prix terminée."))
-            else:
+                auto_appro(parsedbill)
+            if not parsedbills:
                 print("\nAucune facture n'a été donnée en argument.")
         except KeyboardInterrupt:
             sys.exit("\nScript interrompu définitivement.")
@@ -596,15 +630,25 @@ if __name__ == "__main__":
             if brand in brands:
                 sys.exit(f"\nLa façon de parser les factures de {brand} n'a pas encore été codée.")
             elif brand and brand[:-1] in brands and brand[-1] == "0":
-                sys.exit(f"\nAucun article n'a pu être reconnu. Il semble que {brand[:-1]} a légèrement modifié la forme de ses factures. Merci de prévenir {contact} pour mettre à jour la détection des articles {brand[:-1]} par ce script.")
+                sys.exit(f"\nAucun article n'a pu être reconnu. Il semble que {brand[:-1]} a légèrement modifié la forme de ses factures. Merci de prévenir une personne qui maintient le script pour mettre à jour la détection des articles {brand[:-1]} par ce script.")
+            elif brand.endswith(".pdf") or brand.endswith(".html"):
+                sys.exit(f"\nLa marque de {brand} n'a pas pu être reconnue. Il peut s'agir d'une nouvelle marque (parsing pas encore implémenté) ou alors la forme de la facture a beaucoup changé (parsing à refaire). Merci de prévenir une personne qui maintient le script pour mettre à jour ce script.")
             else:
-                sys.exit(f"\nLa marque de {brand} n'a pas pu être reconnue. Il peut s'agir d'une nouvelle marque (parsing pas encore implémenté) ou alors la forme de la facture a beaucoup changé (parsing à refaire). Merci de prévenir {contact} pour mettre à jour ce script.")
+                sys.exit(brand) # Aucun driver ne marche
+        except selenium.common.exceptions.NoSuchElementException as e:
+            sys.exit(str(e))
+        except selenium.common.exceptions.WebDriverException:
+            try:driver.quit()
+            except:pass
+            sys.exit("Le driver a été fermé. Script interrompu définitivement.")
+        except RuntimeError:
+            sys.exit("\nImpossible de démarrer le serveur tika pour parser des PDF. Tika a besoin de Java pour fonctionner."+" Le dossier bin du jdk de Java a-t-il été ajouté au PATH ?" if os.name == 'nt' else "")
         except:
-            print(f"\nUne erreur inattendue a été rencontrée. Consultez le paragraphe \"Quelques bugs ou messages d'erreur exotiques\" sur {repository}. Si le problème persiste, merci de prévenir {contact}.")
+            print(f"\nUne erreur inattendue a été rencontrée. Relisez le README sur {repository}. Si le problème persiste, merci de prévenir une personne qui maintient le script.")
             raise
         finally:
             end_time = time()
             print(f"\nTemps écoulé : {end_time-start_time} secondes.")
-        #sys.exit(0)
+        sys.exit(0)
 
     main()
