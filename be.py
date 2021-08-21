@@ -127,12 +127,22 @@ class Article:
                     stm2 = stm2[stm2.index('.')+3:]
                 self.price = float(stm2[:stm2.index('.')+3])
                 self.TVA = float(line[-1])
-            else:
+            elif date < "20210800":
                 self.sernumber = line[0]
                 self.name = " ".join(line[1:-4])
                 self.qty = int(line[-4])
                 self.price = float(line[-1])
                 self.TVA = float(line[-2])
+            else:
+                self.sernumber = line[0]
+                self.name = " ".join(line[1:-3])
+                self.qty = int(line[-3])
+                stm2 = line[-2][line[-2].index('.')+3:]
+                if stm2.count('.') == 3:  # Il y a une remise sur cet article
+                    stm2 = stm2[stm2.index('.')+3:]
+                self.price = float(stm2[:stm2.index('.')+3])
+                self.TVA = float(stm2[stm2.index('.')+3:])
+
         elif brand == "auchan":
             assert line[0] != "2007984000383"  # Frais de livraison
             self.sernumber = line[0]
